@@ -1,0 +1,19 @@
+====================================
+Punch JS Selector
+====================================
+
+Created by Nathan Sweet.
+
+-----------------------------------
+Introduction
+-----------------------------------
+
+This selector engine is more of an intellectual exercise than an actual offering
+for the selector engine field. There is no dearth of good selector engines.The
+profibility of actually working on and maintaining an engine will offer dimini-
+shing returns throughout the coming years as browsers that don't support the
+"querySelector" method drop out of support. The tokeninzing process I've come
+up with is what I'm most proud of, I think I have offered something unique to
+the way Regular Expressions are being used in current selector engines. Regular
+Expressions are expensive to use, but for some reason a lot of selector engines
+decide to go their way at the cost of performance.
