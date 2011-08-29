@@ -1,4 +1,12 @@
 (function(){
+    /*
+        To do:
+        1. get rid of "Punch" namespace, it doesn't need to be a class, it just needs to be one function.
+        2. Add language pseudo
+        3. add other good pseudos
+        4. Start banging away at some cross browser bugs
+        5. Implement qSA
+    */
     var combinators = RegExp('^(\\s*)([A-Za-z\\*]*)(\\s*)(>(?:\\s*)|~(?:\\s*)|\\+(?:\\s*)|#[\\w\\-]*|\\[[\\w\\-\\:\\.\\|"\\*\\~\\^\\=\\$\\!\\s]*\\]{1}|:[\\w\\-]*\\({1}[^\\)]*\\){1}|:[\\w\\-]*|\\.[\\w\\-]*|){1}(.*)$'), 
         /*
             combinators:
@@ -61,9 +69,10 @@
         reIs = RegExp('^([\\.\\[\\#]?)(.*)'),
         reClass = new RegExp('[\\n\\t\\r]','g'),
         isNum = RegExp('^\\s*\\-?\\d*\\s*$'),
+        white = new RegExp('^\\s+|\\s+$','g'),
         
         removeWhite = function(string){
-            return string.replace(/^\s+|\s+$/,'');
+            return string.replace(white,'');
         },
         
         slice = Array.prototype.slice,
@@ -72,7 +81,7 @@
             return (Object.prototype.toString.call(obj).slice(8,-1) === 'Array');
         },
         
-    Punch = this.Punch = function(selector,context){
+    Punch = function(selector,context){
         context = context || document;
         var results = [],
             temp;
