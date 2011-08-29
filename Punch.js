@@ -1,14 +1,66 @@
 (function(){
-    var combinators = /^(\s*)([\w\*]*)(\s*)(>(?:[\s]*)[^\s]*|~(?:\s*)[^\s]*|\+(?:\s*)[^\s]*|#[\w\-]*|\[[\w\-\:\.\|"\*\~\^\=\$\!\s]*\]{1}|:[\w\-]+\({1}[^\)]*\){1}|:[\w\-]*|\.[\w\-]*|){1}(.*)$/, 
-        attrCombinator = /^(?:\[){1}([\w\.\:]*)(\||\!|\~|\^|\*|\$|\=){1}(?:\=)?(?:\")?([^\]\"]*)/,
-        idCombinator = /(?:#){1}([^\s]*)/,
-        childCombinator = /(?:[>\s]*)(.*)/,
-        plusCombinator = /(?:[\+\s]*)(.*)/,
-        tildeCombinator = /(?:[~\s]*)(.*)/,
-        classCombinator = /(?:[\.]{1})(.*)/,
-        colonCombinator = /^(?:\:){1}([^\(]*)(?:\(?)([^\)]*)/,
-        reIs = /^([\.\[\#]{1})(.*)/,
-        reClass = /[\n\t\r]/g,
+    var combinators = RegExp('^(\\s*)([A-Za-z\\*]*)(\\s*)(>(?:\\s*)|~(?:\\s*)|\\+(?:\\s*)|#[\\w\\-]*|\\[[\\w\\-\\:\\.\\|"\\*\\~\\^\\=\\$\\!\\s]*\\]{1}|:[\\w\\-]*\\({1}[^\\)]*\\){1}|:[\\w\\-]*|\\.[\\w\\-]*|){1}(.*)$'), 
+        /*
+            combinators:
+            ^(\\s*) - grab whitespace preceding tagName, means it descends from.
+            ([A-Za-z\\*]*) - grab tag name
+            (\\s*) - grab whitespace proceding tagName, all the tagNames have descendent selectors.
+            (
+                >(?:[\\s]*)[^\\s]*| - grab children selector, move forward OR
+                ~(?:\\s*)[^\\s]*| - grab general next sibling selector, move forward OR
+                \\+(?:\\s*)[^\\s]*| - grab immediate next sibling selector, move forward OR
+                #[\\w\\-]*| - grab id selector, move forward OR
+                \\[[\\w\\-\\:\\.\\|"\\*\\~\\^\\=\\$\\!\\s]*\\]{1}| - grab attribute selector, move forward OR
+                :[\\w\\-]*\\({1}[^\\)]*\\){1}| - grab pseudo-selector WITH parentheses, move forward OR 
+                :[\\w\\-]*| - - grab pseudo-selector WITHOUT parentheses, move forward OR
+                \\.[\\w\\-]*| - grab class-selector and relevant values, morve forward OR
+                 - grab nospace to delimit remainder
+            ){1}
+            (.*)$ - grab remainder for later parsing
+        */
+        attrCombinator = RegExp('^(?:\\[){1}([\\w\\.\\:]*)(\\||\\!|\\~|\\^|\\*|\\$|\\=){1}(?:\\=)?(?:\\")?([^\\]\\"]*)'),
+        /*
+            attrCombinator:
+            ^(?:\\[){1} - dispose of brace
+            ([\\w\\.\\:]*) - grab attribute name
+            (
+                \\|| - grab "|" combinator OR
+                \\!| - grab "!" combinator OR
+                \\~| - grab "~" combinator OR
+                \\^| - grab "^" combinator OR
+                \\*| - grab "*" combinator OR
+                \\$| - grab "$" combinator OR
+                \\= - grab "=" combinator OR
+            ){1}
+            (?:\\=)? - dispose of remaining equal sign, if present
+            (?:\\")? - dispose of beginning quoute, if present
+            ([^\\]\\"]*) - grab the value of the expression.
+        */
+        idCombinator = RegExp('(?:#){1}([^\\s]*)'),
+        childCombinator = RegExp('(?:[>\\s]*)(.*)'),
+        plusCombinator = RegExp('(?:[\\+\\s]*)(.*)'),
+        tildeCombinator = RegExp('(?:[~\\s]*)(.*)'),
+        classCombinator = RegExp('(?:[\\.]{1})(.*)'),
+        colonCombinator = RegExp('^(?:\\:){1}([^\\(]*)(?:\\(?)([^\\)]*)'),
+        /*
+            ^(?:\\:){1} - dispose of one, exactly one, occurence of the colon
+            ([^\\(]*) - grab all characters that aren't a right parenthesis
+            (?:\\(?) - dispose of the right parenthesis
+            ([^\\)]*) - grab all characters that aren't a left parenthesis
+        */
+        nthParser = RegExp('(?:\\s*)(odd|even|\\-?[\\d]+){1}(n?)(?:\\s*)(\\-|\\+)?(?:\\s*)([\\d]*)'),
+        /*
+            (?:\\s*) - dispose of all beginning white space
+            (odd|even|\\-?[\\d]+){1} - grab one occurence of the word 'odd', or 'even', or an integer
+            (n?) - grab one or zero occurences of the letter 'n'
+            (?:\\s*) - dispose of white space after integer or 'n'
+            (\\-|\\+)? - grab one or zero occurences of a minus or plus sign
+            (?:\\s*) - dispose of whitespace
+            ([\\d]*) - grab integer
+        */
+        reIs = RegExp('^([\\.\\[\\#]?)(.*)'),
+        reClass = new RegExp('[\\n\\t\\r]','g'),
+        isNum = RegExp('^\\s*\\-?\\d*\\s*$'),
         
         removeWhite = function(string){
             return string.replace(/^\s+|\s+$/,'');
@@ -17,7 +69,7 @@
         slice = Array.prototype.slice,
         
         isArray = function(obj){
-            return (Object.prototype.toString.call(obj).slice(8,-1) === 'Array')
+            return (Object.prototype.toString.call(obj).slice(8,-1) === 'Array');
         },
         
     Punch = this.Punch = function(selector,context){
@@ -29,7 +81,7 @@
         }
         
         if(!selector || typeof selector !== 'string'){
-            return results;
+            return [];
         }
         
         selector = selector.indexOf(')') === -1 ? selector.split(',') : Punch.parseComma(selector);
@@ -38,7 +90,7 @@
         
         for(var i = selector.length, n = 0; n < i; n++){
             selector[n] = removeWhite(selector[n]);
-            results = results.concat(Punch.selector(selector[n],context));
+            results = results.concat(Punch.select(selector[n],context));
         }
         
         
@@ -71,24 +123,23 @@
         
     };
 
-    Punch.selector = function(selector,context,forceCheck){
-       var remainder = selector,
-          newContext = [],
-          first = true,
-          i,n,tag,space,combinator,array;
+    Punch.select = function(selector,context,forceCheck){
+          var remainder = selector,
+              newContext = [],
+              first = true,
+              i,n,tag,space,combinator,array;
           if(context.length === 0){
               return context;
           }
           do{
-                array = combinators.exec(remainder)
+                array = combinators.exec(remainder);
                 tag = array[2];
                 space = forceCheck ? false : (first || array[1].length > 0);
                 combinator = array[4];
                 remainder = array[5];
                 first = false;
                 if(tag.length > 0){
-                    space = forceCheck ? false : (array[3].length > 0);
-                    if(forceCheck){
+                    if(!space){
                         tag = array[2].toUpperCase();
                         for(i = context.length, n = 0; n < i; n++){
                             if(context[n].nodeName === tag || tag === '*'){
@@ -104,11 +155,12 @@
                         context = newContext;
                         newContext = [];
                     }
+                    space = forceCheck ? false : (array[3].length > 0);
                 }
                 if(combinator.length > 0){
                     context = newContext.concat(Punch.combinators[combinator.charAt(0)](combinator,context,space));
                 }
-            } while(remainder)
+            } while(remainder);
             
             return context;
     };
@@ -160,7 +212,7 @@
             for(var i = context.length, n = 0; n < i; n++){
                 newContext = newContext.concat(Punch.getChildren(context[n]));
             }
-            return Punch.selector(combinator[1],newContext,true);
+            return newContext;
             
         },
         
@@ -175,7 +227,7 @@
                     newContext.unshift(tmp);
                 }
             }
-            return Punch.selector(combinator[1],newContext,true);
+            return newContext;
         },
         
         '~' : function(combinator,context){
@@ -185,7 +237,7 @@
             for(var i = context.length, n = 0; n < i; n++){
                 newContext = newContext.concat(Punch.getAllNextSiblings(context[n]));
             }
-            return Punch.selector(combinator[1],newContext,true);
+            return newContext;
         },
         
         '.' : function(combinator,context,space){
@@ -213,25 +265,14 @@
                 operator = combinator[1],
                 value = combinator[2],
                 newContext = [],
-                elements,i,tmp;
+                n = 0;
             if(space){
-                while(l--){
-                    elements = slice.call(context[l].getElementsByTagName('*'));
-                    i = elements.length;
-                    while(i--){
-                        tmp = Punch.colonOperators[operator](elements[i],value);
-                        if(tmp !== null){
-                            newContext.unshift(tmp);
-                        }
-                    }
+                while(n < l){
+                    newContext = newContext.concat(Punch.colonOperators[operator](slice.call(context[n].getElementsByTagName('*')),value));
+                    n++;
                 }
             } else {
-                while(l--){
-                    tmp = Punch.colonOperators[operator](context[l],value);
-                    if(tmp !== null){
-                        newContext.unshift(tmp);
-                    }
-                }
+                newContext = Punch.colonOperators[operator](context,value);
             }
             return newContext;
         }
@@ -242,104 +283,169 @@
             var val = value;
             return function(attr){
                 return attr.split('-')[0] === val;
-            }
+            };
         },
         
         '*' : function(value){
-            var val = value
+            var val = value;
             return function(attr){
                 return attr.indexOf(value) > -1;
-            }
+            };
         },
         
         '~' : function(value){
             var val = ' ' + value + ' ';
             return function(attr){
                 return (' ' + attr + ' ').replace(reClass, ' ').indexOf(val) > -1;
-            }
+            };
         },
         
         '!' : function(value){
             var val = value;
             return function(attr){
-                return !(val === attr);
-            }
+                return val !== attr;
+            };
         },
         
         '$' : function(value){
             var re = new RegExp(value+'$');
             return function(attr){
                 return re.test(attr);
-            }
+            };
         },
         
         '^' : function(value){
             var re = new RegExp('^'+value);
             return function(attr){
                 return re.test(attr);
-            }
+            };
         },
         
         '=' : function(value){
             var val = value;
             return function(attr){
                 return val === attr;
-            }
+            };
         }
     };
     
     Punch.colonOperators = {
         'nth-child': function(context,value){
-            context = Punch.getChildren(context)[parseInt(value) - 1];
-            return context ? context : null;
-        },
-        
-        'nth-last-child': function(context, value){
-            context = Punch.getChildren(context);
-            context = context[context.length - 1 - parseInt(value)];
-            return context ? context : null;
+            value = nthParser.exec(value);
+            var number = value[1] !== '' ? value[1] : 1,
+                n = value[2] ? true : false,
+                combine = value[3] ? value[3] : '+',
+                offset = value[4] ? value[4] : '0',
+                newContext = [];
+            if(!isNum.test(number)){
+                offset = number === 'even' ? '0' : '1';
+                number = '2';
+                n = true;
+                combine = '+';
+            }
+            
+            number = parseInt(number,10);
+            var length = context.length;
+            if(n && length >=  Math.abs(number)){
+                    offset = parseInt(combine + offset, 10);
+                    
+                    var limit = number !== 0 ? Math.round(length/Math.abs(number)) - 1 : 0,
+                        index = 0,
+                        mod = 0,
+                        initial;
+                        modulus = length + 1;
+                    do{
+                        mod = (mod + number + modulus) % modulus;
+                        initial = mod + offset;
+                        index = initial > length || initial < 0 ? (mod + offset + modulus) % modulus : initial;
+                        index = Math.abs(index === 0 ? 0 : index > 0 ? index -1 : index + 1);
+                        newContext.push(context[index]);
+                    } while(limit--);
+            } else if(length >= Math.abs(number)){
+                newContext = context[number - 1];
+            }
+            return newContext;
         },
         
         'first-child': function(context){
-            context = context.firstChild;
-            return context ? context : null;
+            var i = context.length,
+                newContext = [];
+            while(i--){
+                if(context[i] === Punch.getChildren(context[i].parentNode)[0]){
+                    newContext.unshift(context[i]);
+                }
+            }
+            return newContext;
         },
         
         'last-child': function(context){
-            context = context.lastChild;
-            return context ? context : null;
+            var i = context.length,
+                newContext = [],
+                tmp;
+            while(i--){
+                tmp = Punch.getChildren(context[i].parentNode);
+                if(context[i] === tmp[tmp.length - 1]){
+                    newContext.unshift(context[i]);
+                }
+            }
+            return newContext;
         },
         
         'checked':function(context){
-            return context.checked ? context : null;
+            var i = context.length,
+                newContext = [];
+            while(i--){
+                if(context[i].checked){
+                    newContext.unshift(context[i]);
+                }
+            }
         },
         
         'not': function(context,value) {
             value = value.split(',');
-            var i = value.length,
-                bool = true;
+            var i = context.length,
+                newContext = [],
+                bool, n;
             while(i--){
-                bool = !Punch.is(context,value[i]);
-                if(!bool) break;
+                n = value.length - 1;
+                bool = false
+                while(
+                    bool = !Punch.is(context[i],value[n]),
+                    bool && n--
+                );
+                if(bool) newContext.unshift(context[i]);
             }
-            return bool ? context : null;
+            return newContext;
         },
         
         'disabled': function(context){
-            return context.disabled ? context : null;
+            var i = context.length,
+                newContext = [];
+            while(i--){
+                if(context[i].disabled){
+                    newContext.unshift(context[i]);
+                }
+            }
         },
         
         'enabled': function(context){
-            return context.disabled ? null : context;
+            var i = context.length,
+                newContext = [];
+            while(i--){
+                if(!context[i].disabled){
+                    newContext.unshift(context[i]);
+                }
+            }
         },
         
         'selected': function(context){
-            return context.selected ? context : null;
-        },
-        
-        'parent': function(context){
-            var num = context.parentNode.nodeType
-            return (num === 1 || num === 9) ? context.parentNode : null;
+            var i = context.length,
+                newContext = [];
+            while(i--){
+                if(context[i].selected){
+                    newContext.unshift(context[i]);
+                }
+            }
         }
     };
     
@@ -360,6 +466,8 @@
                 case '[':
                     bool = (Punch.combinators['[']('['+tmp[2],[element],false).length > 0);
                     break;
+                default:
+                    bool = element.nodeName === removeWhite(selector[i]).toUpperCase();
             }
             if(!bool) break;
         }
@@ -377,7 +485,7 @@
             
             return function(element){
                 return element.nextElementSibling;
-            }
+            };
         } else {
             delete el;
             
@@ -388,7 +496,7 @@
                 } else{
                     return Punch.nextElement(node.nextSibling);
                 }
-            }
+            };
         }
     }();
     
@@ -402,7 +510,7 @@
                 
                 return function(element){
                     return slice.call(element.children);
-                }
+                };
             } else {
                 
                 return function(element){
@@ -417,7 +525,7 @@
                     }
                     
                     return arr;
-                }
+                };
             }
     }();
     
@@ -485,7 +593,7 @@
 
                 return a.compareDocumentPosition(b) & 4 ? -1 : 1;
            }
-            :
+           :
            function(a,b){
                 if ( a === b ) {
                     hasDuplicate = true;
@@ -516,26 +624,3 @@
     }
     
 }());
-
-/*
-/[~\[:#>+]/.exec('div#someid:not(this,that,theother)')
-/(\w+)([~\[:#>+])(\w+)/.exec('div#someid:not(this,that,theother)');
-/(\w+)([~\[:#>+])(\w+)/.exec('#someid:not(this,that,theother)');
-/(\w*)([~\[:#>+])(\w*)(.+)/.exec('div#someid:not(this,that,theother)');
-/^(\w*)([~\[:#>+])(\w*)(.*)$/.exec('div#someid:not(this,that,theother)');
-/^(.*)([~\[:#>+])(\w*)(.*)$/.exec('* div');
-/^(\w*)([~\[:#>+])(\w*)(.*)$/.exec('* div');
-/^([\w\*]*)([~\[:#>+])([\w\*]*)(.*)$/.exec('div');
-/^([\w\*]*)([~\[:#>+])([\w\*]*)(.*)$/.exec('*');
-/^([\w\*]*)([~\[:#>+]*)([\w\*]*)(.*)$/.exec('div#someid:not(this,that,theother)');
-/^([\w\*]*)([~\[:#>+\.]*)([\w\*]*)(.*)$/.exec('div.someid:not(this,that,theother)');
-/^([\w\*]*)([~\[:#>+\.\(]*)([\w\*]*)(.*)$/.exec('div.someid:not(this,that,theother)');
-/^([\w\*]*)([~\[:#>+\.]*)([\w\*\(\)]*)(.*)$/.exec(':not(this,that,theother)');
-/^([\w\*]*)([~\[\:#>\+\.\s]){1}([\w[~\[:#>\+\.\=\(,\!\^\*]*)(?:[\]\)]){1}(.*)$/.exec('div[attr*=something][attr=7]:not(this,that,theother) and.somethingelse');
-/^([\w\*]*)([~\[\:#>\+\.\s]){1}([\w~\[:#>\+\.\=\(,\!\^\*\s])*(?:[\]\)\s]){1}(.*)$/.exec('ul li.class');
-/^([\w\*]*)([~#>\[\+\.]|\s|\:[\(\w\s\,]*){1}([\w~\[:#>\+\.\=\!\^\*]*)(?:\)|\]|\s|){1}(.*)$/
-/^([\w\*]*)([~#>\[\+\.]|\s|\:[\(\w\s\,]*){1}([\w~\[#>\+\.\=\!\^\*]*)(?:\)|\]|\s|){1}(.*)$/
-/([\w\*]*)(\s|#[\w\-]*|\[[\w\-\*\^\=\$\!]*\]{1}|**RIGHTHERE**>[\s]{0,1}[\w\*]*[^\]**ENDHERE**|:[\w\-]+\({1}[\w\-\*:\.\,\#\s]*\){1}|:[\w\-]+[\w\-\*\.\#\s]*|\.[\w\-]*|){1}(.*)/.exec('ulli')
-/^([\w\*]*)(?:\s*)(>\s*|~\s*|\+\s*|#[\w\-]*|\[[\w\-\|\*\^\=\$\!]*\]{1}|:[\w\-]+\({1}[\w\-\*:\.\,\#\s]*\){1}|:[\w\-]+[\w\-\*\.\#\s]*|\.[\w\-]*|){1}(?:\s*)(.*)$/.exec('[attr|=some] [anotherattr!=something]')
-/^(\s*)([\w\*]*)(\s*)(>(?:[\s]*)[^\s]*|~(?:\s*)[^\s]*|\+(?:\s*)[^\s]*|#[\w\-]*|\[[\w\-\:\.\|"\*\~\^\=\$\!\s]*\]{1}|:[\w\-]+\({1}[^\)]*\){1}|:[\w\-]*|\.[\w\-]*|){1}(.*)$/
-* * */
