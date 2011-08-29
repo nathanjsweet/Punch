@@ -399,6 +399,7 @@
                     newContext.unshift(context[i]);
                 }
             }
+            return newContext;
         },
         
         'not': function(context,value) {
@@ -426,6 +427,7 @@
                     newContext.unshift(context[i]);
                 }
             }
+            return newContext;
         },
         
         'enabled': function(context){
@@ -436,6 +438,7 @@
                     newContext.unshift(context[i]);
                 }
             }
+            return newContext;
         },
         
         'selected': function(context){
@@ -446,6 +449,7 @@
                     newContext.unshift(context[i]);
                 }
             }
+            return newContext;
         }
     };
     
