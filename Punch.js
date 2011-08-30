@@ -1,11 +1,11 @@
 (function(){
     /*
         To do:
-        1. get rid of "Punch" namespace, it doesn't need to be a class, it just needs to be one function.
-        2. Add language pseudo
-        3. add other good pseudos
-        4. Start banging away at some cross browser bugs
-        5. Implement qSA
+        1. Get rid of namespace, none of this needs to be classed.
+        2. Add remaining pseudos
+            a. lang()
+        3. Start banging away at some cross browser bugs
+        4. Implement qSA
     */
     var combinators = RegExp('^(\\s*)([A-Za-z\\*]*)(\\s*)(>(?:\\s*)|~(?:\\s*)|\\+(?:\\s*)|#[\\w\\-]*|\\[[\\w\\-\\:\\.\\|"\\*\\~\\^\\=\\$\\!\\s]*\\]{1}|:[\\w\\-]*\\({1}[^\\)]*\\){1}|:[\\w\\-]*|\\.[\\w\\-]*|){1}(.*)$'), 
         /*
@@ -459,7 +459,42 @@
                 }
             }
             return newContext;
+        },
+        
+        'link': function(context){
+            var i = context.length,
+                newContext = [],
+                tmp;
+            while(i--){
+                if(context[i].href){
+                    newContext.unshift(context[i]);
+                }
+            }
+            return newContext;
+        },
+        
+        'empty': function(context){
+            var i = context.length;
+                newContext = [];
+            while(i--){
+                if(Punch.getChildren(context[i]).length === 0){
+                    newContext.unshift(context[i]);
+                }
+            }
+            return newContext;
+        },
+        
+        'root': function(context){
+            var i = context.length;
+                newContext = [];
+            while(i--){
+                if(context[i].parentNode === window.document){
+                    newContext.unshift(context[i]);
+                }
+            }
+            return newContext;
         }
+        
     };
     
     Punch.is = function(element,selector){
