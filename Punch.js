@@ -5,7 +5,7 @@
         2. Start banging away at some cross browser bugs
         3. Implement qSA
         4. add colon-combinator to is-function
-        5. refactor dom-functions that have multiple possibilities to not be instantiated by anonymous functions, as this creates a heavier scope chain.
+        5. nth-child is wrong, it needs to be corrected.
     */
     var reCombinators = RegExp('^(\\s*)([A-Za-z\\*]*)(\\s*)(>(?:\\s*)|~(?:\\s*)|\\+(?:\\s*)|#[\\w\\-]*|\\[[\\w\\-\\:\\.\\|"\\*\\~\\^\\=\\$\\!\\s]*\\]{1}|:[\\w\\-]*\\({1}[^\\)]*\\){1}|:[\\w\\-]*|\\.[\\w\\-]*|){1}(.*)$'), 
         /*
@@ -339,7 +339,7 @@
     },
     
     colonOperators = {
-        'nth-child': function(context,value){
+        /*'nth-element': function(context,value){
             value = nthParser.exec(value);
             var number = value[1] !== '' ? value[1] : 1,
                 n = value[2] ? true : false,
@@ -361,8 +361,8 @@
                     var limit = number !== 0 ? Math.round(length/Math.abs(number)) - 1 : 0,
                         index = 0,
                         mod = 0,
+                        modulus = length + 1,
                         initial;
-                        modulus = length + 1;
                     do{
                         mod = (mod + number + modulus) % modulus;
                         initial = mod + offset;
@@ -372,6 +372,47 @@
                     } while(limit--);
             } else if(length >= Math.abs(number)){
                 newContext = context[number - 1];
+            }
+            return newContext;
+        },*/
+        
+        'nth-child': function(context,value){
+            value = nthParser.exec(value);
+            var number = value[1] !== '' ? value[1] : 1,
+                n = value[2] ? true : false,
+                combine = value[3] ? value[3] : '+',
+                offset = value[4] ? value[4] : '0',
+                newContext = [];
+            if(!isNum.test(number)){
+                offset = number === 'even' ? '0' : '1';
+                number = '2';
+                n = true;
+                combine = '+';
+            }
+            
+            number = parseInt(number,10);
+            var i = context.length;
+            if(n && i >= Math.abs(number)){
+                offset = parseInt(combine + offset, 10);
+                var element,parentsChildren,plength,index;
+                while(i--){
+                    element = context[i];
+                    parentsChildren = getChildren(element.parentNode);
+                    plength = parentsChildren.length;
+                    index = plength;
+                    while(
+                        index-- && parentsChildren[index] !== element
+                    );
+                    if(index + 1 + offset % number === 0){
+                        newContext.unshift(element);
+                    }
+                }
+            } else if(i >= number){
+                while(i--){
+                    if(getChildren(context[i])[number - 1] === context[i]){
+                        newContext.unshift(context[i]);
+                    }
+                }
             }
             return newContext;
         },
@@ -422,7 +463,7 @@
                 while(
                     bool = !is(context[i],value[n]),
                     bool && n--
-                )
+                );
                 if(bool) newContext.unshift(context[i]);
             }
             return newContext;
