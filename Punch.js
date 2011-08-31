@@ -5,7 +5,6 @@
         2. Start banging away at some cross browser bugs
         3. Implement qSA
         4. add colon-combinator to is-function
-        5. nth-child doesn't need as complicated parsing with fix.
     */
     var reCombinators = RegExp('^(\\s*)([A-Za-z\\*]*)(\\s*)(>(?:\\s*)|~(?:\\s*)|\\+(?:\\s*)|#[\\w\\-]*|\\[[\\w\\-\\:\\.\\|"\\*\\~\\^\\=\\$\\!\\s]*\\]{1}|:[\\w\\-]*\\({1}[^\\)]*\\){1}|:[\\w\\-]*|\\.[\\w\\-]*|){1}(.*)$'), 
         /*
@@ -66,7 +65,7 @@
             (?:\\s*) - dispose of whitespace
             ([\\d]*) - grab integer
         */
-        reIs = RegExp('^([\\.\\[\\#]?)(.*)'),
+        reIs = RegExp('^([\\.\\[#\\:]?)(.*)'),
         reClass = new RegExp('[\\n\\t\\r]','g'),
         isNum = RegExp('^\\s*\\-?\\d*\\s*$'),
         white = new RegExp('^\\s+|\\s+$','g'),
@@ -339,43 +338,6 @@
     },
     
     colonOperators = {
-        /*'nth-element': function(context,value){
-            value = nthParser.exec(value);
-            var number = value[1] !== '' ? value[1] : 1,
-                n = value[2] ? true : false,
-                combine = value[3] ? value[3] : '+',
-                offset = value[4] ? value[4] : '0',
-                newContext = [];
-            if(!isNum.test(number)){
-                offset = number === 'even' ? '0' : '1';
-                number = '2';
-                n = true;
-                combine = '+';
-            }
-            
-            number = parseInt(number,10);
-            var length = context.length;
-            if(n && length >=  Math.abs(number)){
-                    offset = parseInt(combine + offset, 10);
-                    
-                    var limit = number !== 0 ? Math.round(length/Math.abs(number)) - 1 : 0,
-                        index = 0,
-                        mod = 0,
-                        modulus = length + 1,
-                        initial;
-                    do{
-                        mod = (mod + number + modulus) % modulus;
-                        initial = mod + offset;
-                        index = initial > length || initial < 0 ? (mod + offset + modulus) % modulus : initial;
-                        index = Math.abs(index === 0 ? 0 : index > 0 ? index -1 : index + 1);
-                        newContext.push(context[index]);
-                    } while(limit--);
-            } else if(length >= Math.abs(number)){
-                newContext = context[number - 1];
-            }
-            return newContext;
-        },*/
-        
         'nth-child': function(context,value){
             value = nthParser.exec(value);
             var number = value[1] !== '' ? value[1] : 1,
@@ -553,6 +515,9 @@
                     break;
                 case '[':
                     bool = (combinators['[']('['+tmp[2],[element],false).length > 0);
+                    break;
+                case ':':
+                    bool = (combinators[':']('['+tmp[2],[element],false).length > 0);
                     break;
                 default:
                     bool = element.nodeName === removeWhite(selector[i]).toUpperCase();
