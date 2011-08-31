@@ -5,7 +5,7 @@
         2. Start banging away at some cross browser bugs
         3. Implement qSA
         4. add colon-combinator to is-function
-        5. nth-child is wrong, it needs to be corrected.
+        5. nth-child doesn't need as complicated parsing with fix.
     */
     var reCombinators = RegExp('^(\\s*)([A-Za-z\\*]*)(\\s*)(>(?:\\s*)|~(?:\\s*)|\\+(?:\\s*)|#[\\w\\-]*|\\[[\\w\\-\\:\\.\\|"\\*\\~\\^\\=\\$\\!\\s]*\\]{1}|:[\\w\\-]*\\({1}[^\\)]*\\){1}|:[\\w\\-]*|\\.[\\w\\-]*|){1}(.*)$'), 
         /*
@@ -56,7 +56,7 @@
             (?:\\(?) - dispose of the right parenthesis
             ([^\\)]*) - grab all characters that aren't a left parenthesis
         */
-        nthParser = RegExp('(?:\\s*)(odd|even|\\-?[\\d]+){1}(n?)(?:\\s*)(\\-|\\+)?(?:\\s*)([\\d]*)'),
+        nthParser = RegExp('(?:\\s*)(odd|even|\\-?[\\d]+){1}(n?)(?:[\\s\\-\\+]*)([\\d]*)'),
         /*
             (?:\\s*) - dispose of all beginning white space
             (odd|even|\\-?[\\d]+){1} - grab one occurence of the word 'odd', or 'even', or an integer
@@ -380,30 +380,28 @@
             value = nthParser.exec(value);
             var number = value[1] !== '' ? value[1] : 1,
                 n = value[2] ? true : false,
-                combine = value[3] ? value[3] : '+',
-                offset = value[4] ? value[4] : '0',
+                offset = value[3] ? value[3] : '0',
                 newContext = [];
             if(!isNum.test(number)){
                 offset = number === 'even' ? '0' : '1';
                 number = '2';
                 n = true;
-                combine = '+';
             }
             
             number = parseInt(number,10);
             var i = context.length;
+            
             if(n && i >= Math.abs(number)){
                 offset = parseInt(combine + offset, 10);
-                var element,parentsChildren,plength,index;
+                var element,parentsChildren,index;
                 while(i--){
                     element = context[i];
                     parentsChildren = getChildren(element.parentNode);
-                    plength = parentsChildren.length;
-                    index = plength;
+                    index = parentsChildren.length;
                     while(
                         index-- && parentsChildren[index] !== element
                     );
-                    if(index + 1 + offset % number === 0){
+                    if((index + 1 + offset) % number === 0){
                         newContext.unshift(element);
                     }
                 }
@@ -414,6 +412,7 @@
                     }
                 }
             }
+            
             return newContext;
         },
         
