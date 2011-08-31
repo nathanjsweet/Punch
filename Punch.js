@@ -1,22 +1,21 @@
 (function(){
     /*
         To do:
-        1. Get rid of namespace, none of this needs to be classed.
-        2. Add remaining pseudos
-            a. lang()
-        3. Start banging away at some cross browser bugs
-        4. Implement qSA
+        1. Correct inconsistent naming conventions.
+        2. Start banging away at some cross browser bugs
+        3. Implement qSA
+        4. add colon-combinator to is-function
     */
-    var combinators = RegExp('^(\\s*)([A-Za-z\\*]*)(\\s*)(>(?:\\s*)|~(?:\\s*)|\\+(?:\\s*)|#[\\w\\-]*|\\[[\\w\\-\\:\\.\\|"\\*\\~\\^\\=\\$\\!\\s]*\\]{1}|:[\\w\\-]*\\({1}[^\\)]*\\){1}|:[\\w\\-]*|\\.[\\w\\-]*|){1}(.*)$'), 
+    var reCombinators = RegExp('^(\\s*)([A-Za-z\\*]*)(\\s*)(>(?:\\s*)|~(?:\\s*)|\\+(?:\\s*)|#[\\w\\-]*|\\[[\\w\\-\\:\\.\\|"\\*\\~\\^\\=\\$\\!\\s]*\\]{1}|:[\\w\\-]*\\({1}[^\\)]*\\){1}|:[\\w\\-]*|\\.[\\w\\-]*|){1}(.*)$'), 
         /*
             combinators:
             ^(\\s*) - grab whitespace preceding tagName, means it descends from.
             ([A-Za-z\\*]*) - grab tag name
             (\\s*) - grab whitespace proceding tagName, all the tagNames have descendent selectors.
             (
-                >(?:[\\s]*)[^\\s]*| - grab children selector, move forward OR
-                ~(?:\\s*)[^\\s]*| - grab general next sibling selector, move forward OR
-                \\+(?:\\s*)[^\\s]*| - grab immediate next sibling selector, move forward OR
+                >(?:[\\s]*)| - grab children selector, move forward OR
+                ~(?:\\s*)| - grab general next sibling selector, move forward OR
+                \\+(?:\\s*)| - grab immediate next sibling selector, move forward OR
                 #[\\w\\-]*| - grab id selector, move forward OR
                 \\[[\\w\\-\\:\\.\\|"\\*\\~\\^\\=\\$\\!\\s]*\\]{1}| - grab attribute selector, move forward OR
                 :[\\w\\-]*\\({1}[^\\)]*\\){1}| - grab pseudo-selector WITH parentheses, move forward OR 
@@ -93,20 +92,20 @@
             return [];
         }
         
-        selector = selector.indexOf(')') === -1 ? selector.split(',') : Punch.parseComma(selector);
+        selector = selector.indexOf(')') === -1 ? selector.split(',') : parseComma(selector);
         
         if(!isArray(context)) context = [context];
         
         for(var i = selector.length, n = 0; n < i; n++){
             selector[n] = removeWhite(selector[n]);
-            results = results.concat(Punch.select(selector[n],context));
+            results = results.concat(select(selector[n],context));
         }
         
         
-        return Punch.sortElements(results);
-    };
+        return sortElements(results);
+    },
 
-    Punch.parseComma = function(selector,index,collected){
+    parseComma = function(selector,index,collected){
         index = index || 0;
         collected = collected || [];
         
@@ -124,15 +123,15 @@
         //Example:')... , ...(' or ', ...()' OR
         //Example: '(..)..,' and there are no parens ahead
             collected.push(selector.slice(0,nextComma));
-            return Punch.parseComma(selector.slice(nextComma + 1), 0, collected);
+            return parseComma(selector.slice(nextComma + 1), 0, collected);
         } else{
         //We still need to punt, because we don't know if there are parens ahead.
-            return Punch.parseComma(selector, nextRParen + 1, collected);
+            return parseComma(selector, nextRParen + 1, collected);
         }
         
-    };
+    },
 
-    Punch.select = function(selector,context,forceCheck){
+    select = function(selector,context,forceCheck){
           var remainder = selector,
               newContext = [],
               first = true,
@@ -141,7 +140,7 @@
               return context;
           }
           do{
-                array = combinators.exec(remainder);
+                array = reCombinators.exec(remainder);
                 tag = array[2];
                 space = forceCheck ? false : (first || array[1].length > 0);
                 combinator = array[4];
@@ -167,21 +166,21 @@
                     space = forceCheck ? false : (array[3].length > 0);
                 }
                 if(combinator.length > 0){
-                    context = newContext.concat(Punch.combinators[combinator.charAt(0)](combinator,context,space));
+                    context = newContext.concat(combinators[combinator.charAt(0)](combinator,context,space));
                 }
             } while(remainder);
             
             return context;
-    };
+    },
     
-    Punch.combinators = {
+    combinators = {
         '[':function(combinator,context,space){
             combinator = attrCombinator.exec(combinator);
             var attribute = combinator[1],
                 operator = combinator[2],
                 value = combinator[3],
                 newContext = [],
-                method = Punch.attrOperators[operator](value),
+                method = attrOperators[operator](value),
                 l = context.length,
                 attr, elements, i;
             if(space){
@@ -219,7 +218,7 @@
             combinator = childCombinator.exec(combinator);
             var newContext = [];
             for(var i = context.length, n = 0; n < i; n++){
-                newContext = newContext.concat(Punch.getChildren(context[n]));
+                newContext = newContext.concat(getChildren(context[n]));
             }
             return newContext;
             
@@ -231,7 +230,7 @@
                 i = context.length,
                 tmp;
             while(i--){
-                tmp = Punch.nextElement(context[i]);
+                tmp = nextElement(context[i]);
                 if(tmp !== null){
                     newContext.unshift(tmp);
                 }
@@ -244,7 +243,7 @@
             var newContext = [];
             
             for(var i = context.length, n = 0; n < i; n++){
-                newContext = newContext.concat(Punch.getAllNextSiblings(context[n]));
+                newContext = newContext.concat(getAllNextSiblings(context[n]));
             }
             return newContext;
         },
@@ -256,10 +255,10 @@
                 hasClass;
             if(space){
                 for(var n = 0; n < i; n++){
-                    newContext = newContext.concat(Punch.getElementsByClass(context[n],combinator[1]));
+                    newContext = newContext.concat(getElementsByClass(context[n],combinator[1]));
                 }
             } else {
-                hasClass = Punch.hasClass(combinator[1]);
+                hasClass = hasClass(combinator[1]);
                 while(i--){
                     if(hasClass(context[i])){
                         newContext.unshift(context[i]);
@@ -277,17 +276,17 @@
                 n = 0;
             if(space){
                 while(n < l){
-                    newContext = newContext.concat(Punch.colonOperators[operator](slice.call(context[n].getElementsByTagName('*')),value));
+                    newContext = newContext.concat(colonOperators[operator](slice.call(context[n].getElementsByTagName('*')),value));
                     n++;
                 }
             } else {
-                newContext = Punch.colonOperators[operator](context,value);
+                newContext = colonOperators[operator](context,value);
             }
             return newContext;
         }
-    };
+    },
     
-    Punch.attrOperators = {
+    attrOperators = {
         '|' : function(value){
             var val = value;
             return function(attr){
@@ -338,7 +337,7 @@
         }
     };
     
-    Punch.colonOperators = {
+    colonOperators = {
         'nth-child': function(context,value){
             value = nthParser.exec(value);
             var number = value[1] !== '' ? value[1] : 1,
@@ -380,7 +379,7 @@
             var i = context.length,
                 newContext = [];
             while(i--){
-                if(context[i] === Punch.getChildren(context[i].parentNode)[0]){
+                if(context[i] === getChildren(context[i].parentNode)[0]){
                     newContext.unshift(context[i]);
                 }
             }
@@ -392,7 +391,7 @@
                 newContext = [],
                 tmp;
             while(i--){
-                tmp = Punch.getChildren(context[i].parentNode);
+                tmp = getChildren(context[i].parentNode);
                 if(context[i] === tmp[tmp.length - 1]){
                     newContext.unshift(context[i]);
                 }
@@ -418,11 +417,11 @@
                 bool, n;
             while(i--){
                 n = value.length - 1;
-                bool = false
+                bool = false;
                 while(
-                    bool = !Punch.is(context[i],value[n]),
+                    bool = !is(context[i],value[n]),
                     bool && n--
-                );
+                )
                 if(bool) newContext.unshift(context[i]);
             }
             return newContext;
@@ -432,7 +431,7 @@
             var i = context.length,
                 newContext = [];
             while(i--){
-                if(context[i].disabled){
+                if(context[i].disabled && context[i].type !== 'hidden'){
                     newContext.unshift(context[i]);
                 }
             }
@@ -477,7 +476,7 @@
             var i = context.length;
                 newContext = [];
             while(i--){
-                if(Punch.getChildren(context[i]).length === 0){
+                if(context[i].firstChild){
                     newContext.unshift(context[i]);
                 }
             }
@@ -495,9 +494,9 @@
             return newContext;
         }
         
-    };
+    },
     
-    Punch.is = function(element,selector){
+    is = function(element,selector){
         selector = selector.split(',');
         var i = selector.length,
             bool = true,
@@ -506,13 +505,13 @@
             tmp = reIs.exec(selector[i]);
             switch(tmp[1]){
                 case '.':
-                    bool = Punch.hasClass(tmp[2])(element);
+                    bool = hasClass(tmp[2])(element);
                     break;
                 case '#':
                     bool = (element.id === tmp[2]);
                     break;
                 case '[':
-                    bool = (Punch.combinators['[']('['+tmp[2],[element],false).length > 0);
+                    bool = (combinators['[']('['+tmp[2],[element],false).length > 0);
                     break;
                 default:
                     bool = element.nodeName === removeWhite(selector[i]).toUpperCase();
@@ -520,9 +519,9 @@
             if(!bool) break;
         }
         return bool;
-    };
+    },
     
-    Punch.nextElement = function(){
+    nextElement = function(){
         var el = document.createElement('div');
             
             el.innerHTML = '<i></i><span></span>';
@@ -542,13 +541,13 @@
                 if(node.nextSibling.nodeType === 1 || node.nextSibling === null){
                     return node.nextSibling;
                 } else{
-                    return Punch.nextElement(node.nextSibling);
+                    return nextElement(node.nextSibling);
                 }
             };
         }
-    }();
+    }(),
     
-    Punch.getChildren = function(){
+    getChildren = function(){
         var el = document.createElement('div');
             
             el.innerHTML = '<i></i><!--a--><span></span>';
@@ -575,21 +574,21 @@
                     return arr;
                 };
             }
-    }();
+    }(),
     
-    Punch.getAllNextSiblings = function(element){
+    getAllNextSiblings = function(element){
         var arr = [],
             tmp;
         
-        while(tmp = Punch.nextElement(element), tmp){
+        while(tmp = nextElement(element), tmp){
             arr.push(tmp);
             element = tmp;
         }
         
         return arr;
-    };
+    },
     
-    Punch.getElementsByClass = function(){
+    getElementsByClass = function(){
         var el = document.createElement('div');
         
         el.innerHTML = '<i class="foo"></i>';
@@ -619,16 +618,16 @@
                 return newArr;
             };
         }
-    }();
+    }(),
     
-    Punch.hasClass = function(value){
+    hasClass = function(value){
        var val = ' ' + value + ' ';
        return function(element){
             return (' ' + element.className + ' ').replace(reClass, ' ').indexOf(val) > -1;
        }
-    };
+    },
     
-    var sortElements = document.documentElement.compareDocumentPosition ?
+    sortElements = document.documentElement.compareDocumentPosition ?
            function(a,b){
                 if ( a === b ) {
                     hasDuplicate = true;
@@ -652,9 +651,9 @@
             },
         
         
-        hasDuplicate = false;
+    hasDuplicate = false;
     
-    Punch.sortElements = function(elements){
+    sortElements = function(elements){
         hasDuplicate = false;
         elements = elements.sort(sortElements);
         
