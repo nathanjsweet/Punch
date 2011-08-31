@@ -5,6 +5,7 @@
         2. Start banging away at some cross browser bugs
         3. Implement qSA
         4. add colon-combinator to is-function
+        5. refactor dom-functions that have multiple possibilities to not be instantiated by anonymous functions, as this creates a heavier scope chain.
     */
     var reCombinators = RegExp('^(\\s*)([A-Za-z\\*]*)(\\s*)(>(?:\\s*)|~(?:\\s*)|\\+(?:\\s*)|#[\\w\\-]*|\\[[\\w\\-\\:\\.\\|"\\*\\~\\^\\=\\$\\!\\s]*\\]{1}|:[\\w\\-]*\\({1}[^\\)]*\\){1}|:[\\w\\-]*|\\.[\\w\\-]*|){1}(.*)$'), 
         /*
@@ -335,7 +336,7 @@
                 return val === attr;
             };
         }
-    };
+    },
     
     colonOperators = {
         'nth-child': function(context,value){
@@ -520,61 +521,46 @@
         }
         return bool;
     },
-    
-    nextElement = function(){
-        var el = document.createElement('div');
-            
-            el.innerHTML = '<i></i><span></span>';
-            el = el.getElementsByTagName('i')[0];
-        
-        if(el.nextElementSibling){
-            delete el;
-            
-            return function(element){
-                return element.nextElementSibling;
-            };
-        } else {
-            delete el;
-            
-            return function(node){
-                
-                if(node.nextSibling.nodeType === 1 || node.nextSibling === null){
-                    return node.nextSibling;
-                } else{
-                    return nextElement(node.nextSibling);
-                }
-            };
+    //tmp variable used by other functions to determine things.
+    el,
+    nextElement = (el = document.createElement('div'),
+        el.innerHTML = '<i></i><span></span>',
+        el = el.getElementsByTagName('i')[0],
+        el.nextElementSibling) 
+        ?
+        function(element){
+            return element.nextElementSibling;
         }
-    }(),
-    
-    getChildren = function(){
-        var el = document.createElement('div');
-            
-            el.innerHTML = '<i></i><!--a--><span></span>';
-            
-            if(el.children[1].nodeType === 1){
-                delete el;
-                
-                return function(element){
-                    return slice.call(element.children);
-                };
-            } else {
-                
-                return function(element){
-                    var nodes = element.children,
-                        i = nodes.length,
-                        arr = [];
-                    
-                    while(i--){
-                        if(nodes[i].nodeType !== 8){
-                            arr.unshift(nodes[i]);
-                        }
-                    }
-                    
-                    return arr;
-                };
+        :
+        function(node){
+            if(node.nextSibling.nodeType === 1 || node.nextSibling === null){
+                return node.nextSibling;
+            } else{
+                return nextElement(node.nextSibling);
             }
-    }(),
+        },
+    
+    getChildren = (el = document.createElement('div'),
+        el.innerHTML = '<i></i><!--a--><span></span>',
+        el.children[1].nodeType === 1)
+        ?
+        function(element){
+            return slice.call(element.children);
+        }
+        :
+        function(element){
+            var nodes = element.children,
+                i = nodes.length,
+                arr = [];
+                    
+            while(i--){
+                if(nodes[i].nodeType !== 8){
+                    arr.unshift(nodes[i]);
+                }
+            }
+                    
+            return arr;
+        },
     
     getAllNextSiblings = function(element){
         var arr = [],
@@ -588,37 +574,30 @@
         return arr;
     },
     
-    getElementsByClass = function(){
-        var el = document.createElement('div');
-        
-        el.innerHTML = '<i class="foo"></i>';
-        
-        if(el.getElementsByClassName('foo')){
-            delete el;
-            
-            return function(element,className){
-                return slice.call(element.getElementsByClassName(className));
-            };
-        } else {
-            delete el;
-            return function(element,className){
-                className = ' ' + className + ' '
-                
-                var array = slice.call(element.getElementsByTagName('*')),
-                    i = array.length,
-                    newArr = [];
-                    
-                while(i--){
-                    
-                    if( (' ' + array[i].className + ' ').replace(reClass, ' ').indexOf( className ) > -1 ){
-                        newArr.unshift(array[i]);
-                    }
-                }
-                
-                return newArr;
-            };
+    getElementsByClass = (el = document.createElement('div'),
+        el.innerHTML = '<i class="foo"></i>',
+        el.getElementsByClassName('foo'))
+        ?
+        function(element,className){
+            return slice.call(element.getElementsByClassName(className));
         }
-    }(),
+        :
+        function(element,className){
+            className = ' ' + className + ' '
+                
+            var array = slice.call(element.getElementsByTagName('*')),
+                i = array.length,
+                newArr = [];
+                    
+            while(i--){
+                    
+                if( (' ' + array[i].className + ' ').replace(reClass, ' ').indexOf( className ) > -1 ){
+                    newArr.unshift(array[i]);
+                }
+            }
+                
+            return newArr;
+        },
     
     hasClass = function(value){
        var val = ' ' + value + ' ';
