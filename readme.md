@@ -1,12 +1,9 @@
-====================================
+
 Punch JS Selector
-====================================
-
-Created by Nathan Sweet.
-
------------------------------------
+=================
+###Created by Nathan Sweet
 Introduction
------------------------------------
+------------
 
 There is no dearth of good selector engines.The profibility of actually working
 on and maintaining an engine will offer diminishing returns throughout the 
