@@ -1,6 +1,6 @@
 
-Punch JS Selector
-=================
+Punch JS Selector Engine
+========================
 ###Created by Nathan Sweet
 Introduction
 ------------
