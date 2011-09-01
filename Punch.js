@@ -100,7 +100,7 @@
         }
         
         
-        return sortElements(results);
+        return sortAll(results);
     },
 
     parseComma = function(selector,index,collected){
@@ -635,7 +635,7 @@
         
     hasDuplicate = false;
     
-    sortElements = function(elements){
+    sortAll = function(elements){
         hasDuplicate = false;
         elements = elements.sort(sortElements);
         
