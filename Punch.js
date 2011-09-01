@@ -1,16 +1,15 @@
 (function(){
     /*
         To do:
-        1. Correct inconsistent naming conventions.
-        2. Start banging away at some cross browser bugs
-        3. Implement qSA
+        1. Start banging away at some cross browser bugs
+        2. Implement qSA
     */
     var reCombinators = RegExp('^(\\s*)([A-Za-z\\*]*)(\\s*)(>(?:\\s*)|~(?:\\s*)|\\+(?:\\s*)|#[\\w\\-]*|\\[[\\w\\-\\:\\.\\|"\\*\\~\\^\\=\\$\\!\\s]*\\]{1}|:[\\w\\-]*\\({1}[^\\)]*\\){1}|:[\\w\\-]*|\\.[\\w\\-]*|){1}(.*)$'), 
         /*
             combinators:
-            ^(\\s*) - grab whitespace preceding tagName, means it descends from.
+            ^(\\s*) - grab reWhitespace preceding tagName, means it descends from.
             ([A-Za-z\\*]*) - grab tag name
-            (\\s*) - grab whitespace proceding tagName, all the tagNames have descendent selectors.
+            (\\s*) - grab reWhitespace proceding tagName, all the tagNames have descendent selectors.
             (
                 >(?:[\\s]*)| - grab children selector, move forward OR
                 ~(?:\\s*)| - grab general next sibling selector, move forward OR
@@ -47,30 +46,30 @@
         rePlusCombinator = RegExp('(?:[\\+\\s]*)(.*)'),
         reTildeCombinator = RegExp('(?:[~\\s]*)(.*)'),
         reClassCombinator = RegExp('(?:[\\.]{1})(.*)'),
-        colonCombinator = RegExp('^(?:\\:){1}([^\\(]*)(?:\\(?)([^\\)]*)'),
+        reColonCombinator = RegExp('^(?:\\:){1}([^\\(]*)(?:\\(?)([^\\)]*)'),
         /*
             ^(?:\\:){1} - dispose of one, exactly one, occurence of the colon
             ([^\\(]*) - grab all characters that aren't a right parenthesis
             (?:\\(?) - dispose of the right parenthesis
             ([^\\)]*) - grab all characters that aren't a left parenthesis
         */
-        nthParser = RegExp('(?:\\s*)(odd|even|\\-?[\\d]+){1}(n?)(?:[\\s\\-\\+]*)([\\d]*)'),
+        reNthParser = RegExp('(?:\\s*)(odd|even|\\-?[\\d]+){1}(n?)(?:[\\s\\-\\+]*)([\\d]*)'),
         /*
-            (?:\\s*) - dispose of all beginning white space
+            (?:\\s*) - dispose of all beginning reWhite space
             (odd|even|\\-?[\\d]+){1} - grab one occurence of the word 'odd', or 'even', or an integer
             (n?) - grab one or zero occurences of the letter 'n'
-            (?:\\s*) - dispose of white space after integer or 'n'
+            (?:\\s*) - dispose of reWhite space after integer or 'n'
             (\\-|\\+)? - grab one or zero occurences of a minus or plus sign
-            (?:\\s*) - dispose of whitespace
+            (?:\\s*) - dispose of reWhitespace
             ([\\d]*) - grab integer
         */
         reIs = RegExp('^([\\.\\[#\\:]?)(.*)'),
         reClass = new RegExp('[\\n\\t\\r]','g'),
-        isNum = RegExp('^\\s*\\-?\\d*\\s*$'),
-        white = new RegExp('^\\s+|\\s+$','g'),
+        reIsNum = RegExp('^\\s*\\-?\\d*\\s*$'),
+        reWhite = new RegExp('^\\s+|\\s+$','g'),
         
-        removeWhite = function(string){
-            return string.replace(white,'');
+        removereWhite = function(string){
+            return string.replace(reWhite,'');
         },
         
         slice = Array.prototype.slice,
@@ -96,7 +95,7 @@
         if(!isArray(context)) context = [context];
         
         for(var i = selector.length, n = 0; n < i; n++){
-            selector[n] = removeWhite(selector[n]);
+            selector[n] = removereWhite(selector[n]);
             results = results.concat(select(selector[n],context));
         }
         
@@ -267,7 +266,7 @@
             return newContext;
         },
         ':':function(combinator,context,space){
-            combinator = colonCombinator.exec(combinator);
+            combinator = reColonCombinator.exec(combinator);
             var l = context.length,
                 operator = combinator[1],
                 value = combinator[2],
@@ -338,12 +337,12 @@
     
     colonOperators = {
         'nth-child': function(context,value){
-            value = nthParser.exec(value);
+            value = reNthParser.exec(value);
             var number = value[1] !== '' ? value[1] : 1,
                 n = value[2] ? true : false,
                 offset = value[3] ? value[3] : '0',
                 newContext = [];
-            if(!isNum.test(number)){
+            if(!reIsNum.test(number)){
                 offset = number === 'even' ? '0' : '1';
                 number = '2';
                 n = true;
@@ -519,7 +518,7 @@
                     bool = (combinators[':']('['+tmp[2],[element],false).length > 0);
                     break;
                 default:
-                    bool = element.nodeName === removeWhite(selector[i]).toUpperCase();
+                    bool = element.nodeName === removereWhite(selector[i]).toUpperCase();
             }
             if(!bool) break;
         }
