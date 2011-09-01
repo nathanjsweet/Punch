@@ -4,7 +4,6 @@
         1. Correct inconsistent naming conventions.
         2. Start banging away at some cross browser bugs
         3. Implement qSA
-        4. add colon-combinator to is-function
     */
     var reCombinators = RegExp('^(\\s*)([A-Za-z\\*]*)(\\s*)(>(?:\\s*)|~(?:\\s*)|\\+(?:\\s*)|#[\\w\\-]*|\\[[\\w\\-\\:\\.\\|"\\*\\~\\^\\=\\$\\!\\s]*\\]{1}|:[\\w\\-]*\\({1}[^\\)]*\\){1}|:[\\w\\-]*|\\.[\\w\\-]*|){1}(.*)$'), 
         /*
@@ -25,9 +24,9 @@
             ){1}
             (.*)$ - grab remainder for later parsing
         */
-        attrCombinator = RegExp('^(?:\\[){1}([\\w\\.\\:]*)(\\||\\!|\\~|\\^|\\*|\\$|\\=){1}(?:\\=)?(?:\\")?([^\\]\\"]*)'),
+        reAttrCombinator = RegExp('^(?:\\[){1}([\\w\\.\\:]*)(\\||\\!|\\~|\\^|\\*|\\$|\\=){1}(?:\\=)?(?:\\")?([^\\]\\"]*)'),
         /*
-            attrCombinator:
+            reAttrCombinator:
             ^(?:\\[){1} - dispose of brace
             ([\\w\\.\\:]*) - grab attribute name
             (
@@ -43,11 +42,11 @@
             (?:\\")? - dispose of beginning quoute, if present
             ([^\\]\\"]*) - grab the value of the expression.
         */
-        idCombinator = RegExp('(?:#){1}([^\\s]*)'),
-        childCombinator = RegExp('(?:[>\\s]*)(.*)'),
-        plusCombinator = RegExp('(?:[\\+\\s]*)(.*)'),
-        tildeCombinator = RegExp('(?:[~\\s]*)(.*)'),
-        classCombinator = RegExp('(?:[\\.]{1})(.*)'),
+        reIdCombinator = RegExp('(?:#){1}([^\\s]*)'),
+        reChildCombinator = RegExp('(?:[>\\s]*)(.*)'),
+        rePlusCombinator = RegExp('(?:[\\+\\s]*)(.*)'),
+        reTildeCombinator = RegExp('(?:[~\\s]*)(.*)'),
+        reClassCombinator = RegExp('(?:[\\.]{1})(.*)'),
         colonCombinator = RegExp('^(?:\\:){1}([^\\(]*)(?:\\(?)([^\\)]*)'),
         /*
             ^(?:\\:){1} - dispose of one, exactly one, occurence of the colon
@@ -175,7 +174,7 @@
     
     combinators = {
         '[':function(combinator,context,space){
-            combinator = attrCombinator.exec(combinator);
+            combinator = reAttrCombinator.exec(combinator);
             var attribute = combinator[1],
                 operator = combinator[2],
                 value = combinator[3],
@@ -206,7 +205,7 @@
         },
         
         '#' : function(combinator,context){
-            combinator = idCombinator.exec(combinator);
+            combinator = reIdCombinator.exec(combinator);
             var newContext = [];
             for(var i = context.length, n = 0; n < i; n++){
                 newContext.push(context[n].getElementById(combinator[1]));
@@ -215,7 +214,7 @@
         },
         
         '>' : function(combinator,context){
-            combinator = childCombinator.exec(combinator);
+            combinator = reChildCombinator.exec(combinator);
             var newContext = [];
             for(var i = context.length, n = 0; n < i; n++){
                 newContext = newContext.concat(getChildren(context[n]));
@@ -225,7 +224,7 @@
         },
         
         '+' : function(combinator,context){
-            combinator = plusCombinator.exec(combinator);
+            combinator = rePlusCombinator.exec(combinator);
             var newContext = [],
                 i = context.length,
                 tmp;
@@ -239,7 +238,7 @@
         },
         
         '~' : function(combinator,context){
-            combinator = tildeCombinator.exec(combinator);
+            combinator = reTildeCombinator.exec(combinator);
             var newContext = [];
             
             for(var i = context.length, n = 0; n < i; n++){
@@ -249,7 +248,7 @@
         },
         
         '.' : function(combinator,context,space){
-            combinator = classCombinator.exec(combinator);
+            combinator = reClassCombinator.exec(combinator);
             var newContext = [],
                 i = context.length,
                 hasClass;
