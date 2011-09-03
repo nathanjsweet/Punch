@@ -1,15 +1,17 @@
 (function(){
+    'use strict';
     /*
         To do:
         1. Start banging away at some cross browser bugs
         2. Implement qSA
+        3.update class and id selector attributes to allow for appropriate UTF-8 values
     */
-    var reCombinators = RegExp('^(\\s*)([A-Za-z\\*]*)(\\s*)(>(?:\\s*)|~(?:\\s*)|\\+(?:\\s*)|#[\\w\\-]*|\\[[\\w\\-\\:\\.\\|"\\*\\~\\^\\=\\$\\!\\s]*\\]{1}|:[\\w\\-]*\\({1}[^\\)]*\\){1}|:[\\w\\-]*|\\.[\\w\\-]*|){1}(.*)$'), 
+    var reCombinators = RegExp('^(\\s*)([A-Za-z0-9\\*]*)(\\s*)(>(?:\\s*)|~(?:\\s*)|\\+(?:\\s*)|#[\\w\\-]*|\\[[\\w\\-\\:\\.\\|"\\*\\~\\^\\=\\$\\!\\s]*\\]{1}|:[\\w\\-]*\\({1}[^\\)]*\\){1}|:[\\w\\-]*|\\.[\\w\\-]*|){1}(.*)$'), 
         /*
             combinators:
-            ^(\\s*) - grab reWhitespace preceding tagName, means it descends from.
+            ^(\\s*) - grab white space preceding tagName, means it descends from.
             ([A-Za-z\\*]*) - grab tag name
-            (\\s*) - grab reWhitespace proceding tagName, all the tagNames have descendent selectors.
+            (\\s*) - grab white space proceding tagName, all the tagNames have descendent selectors.
             (
                 >(?:[\\s]*)| - grab children selector, move forward OR
                 ~(?:\\s*)| - grab general next sibling selector, move forward OR
@@ -55,20 +57,20 @@
         */
         reNthParser = RegExp('(?:\\s*)(odd|even|\\-?[\\d]+){1}(n?)(?:[\\s\\-\\+]*)([\\d]*)'),
         /*
-            (?:\\s*) - dispose of all beginning reWhite space
+            (?:\\s*) - dispose of all beginning white  space
             (odd|even|\\-?[\\d]+){1} - grab one occurence of the word 'odd', or 'even', or an integer
             (n?) - grab one or zero occurences of the letter 'n'
-            (?:\\s*) - dispose of reWhite space after integer or 'n'
+            (?:\\s*) - dispose of white  space after integer or 'n'
             (\\-|\\+)? - grab one or zero occurences of a minus or plus sign
-            (?:\\s*) - dispose of reWhitespace
+            (?:\\s*) - dispose of white space
             ([\\d]*) - grab integer
         */
         reIs = RegExp('^([\\.\\[#\\:]?)(.*)'),
         reClass = new RegExp('[\\n\\t\\r]','g'),
         reIsNum = RegExp('^\\s*\\-?\\d*\\s*$'),
         reWhite = new RegExp('^\\s+|\\s+$','g'),
-        
-        removereWhite = function(string){
+ 
+        removeWhite = function(string){
             return string.replace(reWhite,'');
         },
         
@@ -95,7 +97,6 @@
         if(!isArray(context)) context = [context];
         
         for(var i = selector.length, n = 0; n < i; n++){
-            selector[n] = removereWhite(selector[n]);
             results = results.concat(select(selector[n],context));
         }
         
@@ -134,13 +135,11 @@
               newContext = [],
               first = true,
               i,n,tag,space,combinator,array;
-          if(context.length === 0){
-              return context;
-          }
+              
           do{
                 array = reCombinators.exec(remainder);
                 tag = array[2];
-                space = forceCheck ? false : (first || array[1].length > 0);
+                space = (first||space) ? true : forceCheck ? false : (array[1].length > 0);
                 combinator = array[4];
                 remainder = array[5];
                 first = false;
@@ -165,6 +164,7 @@
                 }
                 if(combinator.length > 0){
                     context = newContext.concat(combinators[combinator.charAt(0)](combinator,context,space));
+                    space = false;
                 }
             } while(remainder);
             
@@ -341,19 +341,17 @@
             var number = value[1] !== '' ? value[1] : 1,
                 n = value[2] ? true : false,
                 offset = value[3] ? value[3] : '0',
-                newContext = [];
+                newContext = [],
+                i = context.length,
+                element,parentsChildren,index;
             if(!reIsNum.test(number)){
                 offset = number === 'even' ? '0' : '1';
                 number = '2';
                 n = true;
             }
-            
             number = parseInt(number,10);
-            var i = context.length;
-            
-            if(n && i >= Math.abs(number)){
-                offset = parseInt(combine + offset, 10);
-                var element,parentsChildren,index;
+            if(n){
+                offset = parseInt(offset, 10);
                 while(i--){
                     element = context[i];
                     parentsChildren = getChildren(element.parentNode);
@@ -365,9 +363,9 @@
                         newContext.unshift(element);
                     }
                 }
-            } else if(i >= number){
+            } else if(i >= Math.abs(number)){
                 while(i--){
-                    if(getChildren(context[i])[number - 1] === context[i]){
+                    if(getChildren(context[i].parentNode)[number - 1] === context[i]){
                         newContext.unshift(context[i]);
                     }
                 }
@@ -474,7 +472,7 @@
         },
         
         'empty': function(context){
-            var i = context.length;
+            var i = context.length,
                 newContext = [];
             while(i--){
                 if(context[i].firstChild){
@@ -485,7 +483,7 @@
         },
         
         'root': function(context){
-            var i = context.length;
+            var i = context.length,
                 newContext = [];
             while(i--){
                 if(context[i].parentNode === window.document){
@@ -515,10 +513,10 @@
                     bool = (combinators['[']('['+tmp[2],[element],false).length > 0);
                     break;
                 case ':':
-                    bool = (combinators[':']('['+tmp[2],[element],false).length > 0);
+                    bool = (combinators[':'](':'+tmp[2],[element],false).length > 0);
                     break;
                 default:
-                    bool = element.nodeName === removereWhite(selector[i]).toUpperCase();
+                    bool = element.nodeName === removeWhite(selector[i]).toUpperCase();
             }
             if(!bool) break;
         }
@@ -633,7 +631,7 @@
             },
         
         
-    hasDuplicate = false;
+    hasDuplicate = false,
     
     sortAll = function(elements){
         hasDuplicate = false;
@@ -651,5 +649,5 @@
         
         return elements;
     }
-    
+    window.Punch = Punch;
 }());
