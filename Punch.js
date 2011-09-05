@@ -4,13 +4,15 @@
         To do:
         1. Start banging away at some cross browser bugs
         2. Implement qSA
-        3.update class and id selector attributes to allow for appropriate UTF-8 values
+        3. update class and id selector attributes to allow for appropriate UTF-8 values
+        4. Add more descriptive and better comments
+        5. refactor pseudo-controller to handle context, rather than the sub-function. Low-priority.
     */
-    var reCombinators = RegExp('^(\\s*)([A-Za-z0-9\\*]*)(\\s*)(>(?:\\s*)|~(?:\\s*)|\\+(?:\\s*)|#[\\w\\-]*|\\[[\\w\\-\\:\\.\\|"\\*\\~\\^\\=\\$\\!\\s]*\\]{1}|:[\\w\\-]*\\({1}[^\\)]*\\){1}|:[\\w\\-]*|\\.[\\w\\-]*|){1}(.*)$'), 
+    var reCombinators = RegExp('^(\\s*)([A-Za-z0-9\\*]*)(\\s*)(>(?:\\s*)|~(?:\\s*)|\\+(?:\\s*)|#[\\w\\u00c0-\\uFFFF\\-]*|\\[[\\w\\-\\:\\.\\|"\\*\\~\\^\\=\\$\\!\\s]*\\]{1}|:[\\w\\-]*\\({1}[^\\)]*\\){1}|:[\\w\\-]*|\\.[\\w\\u00c0-\\uFFFF\\-]*|){1}(.*)$'), 
         /*
             combinators:
             ^(\\s*) - grab white space preceding tagName, means it descends from.
-            ([A-Za-z\\*]*) - grab tag name
+            ([A-Za-z0-9\\*]*) - grab tag name
             (\\s*) - grab white space proceding tagName, all the tagNames have descendent selectors.
             (
                 >(?:[\\s]*)| - grab children selector, move forward OR
@@ -25,7 +27,7 @@
             ){1}
             (.*)$ - grab remainder for later parsing
         */
-        reAttrCombinator = RegExp('^(?:\\[){1}([\\w\\.\\:]*)(\\||\\!|\\~|\\^|\\*|\\$|\\=){1}(?:\\=)?(?:\\")?([^\\]\\"]*)'),
+        reAttrCombinator = RegExp('^(?:\\[){1}([\\w\\.\\:]*)(\\||\\!|\\~|\\^|\\*|\\$|\\=|){1}(?:\\=)?(?:\\")?([^\\]\\"]*)'),
         /*
             reAttrCombinator:
             ^(?:\\[){1} - dispose of brace
@@ -37,7 +39,7 @@
                 \\^| - grab "^" combinator OR
                 \\*| - grab "*" combinator OR
                 \\$| - grab "$" combinator OR
-                \\= - grab "=" combinator OR
+                \\=| - grab "=" combinator OR nothing
             ){1}
             (?:\\=)? - dispose of remaining equal sign, if present
             (?:\\")? - dispose of beginning quoute, if present
@@ -55,7 +57,7 @@
             (?:\\(?) - dispose of the right parenthesis
             ([^\\)]*) - grab all characters that aren't a left parenthesis
         */
-        reNthParser = RegExp('(?:\\s*)(odd|even|\\-?[\\d]+){1}(n?)(?:[\\s\\-\\+]*)([\\d]*)'),
+        reNthParser = RegExp('(?:\\s*)(odd|even|\\-?[\\d]+){1}(n?)(?:\\s*)([\\-+]?)(?:\\s*)([\\d]*)'),
         /*
             (?:\\s*) - dispose of all beginning white  space
             (odd|even|\\-?[\\d]+){1} - grab one occurence of the word 'odd', or 'even', or an integer
@@ -65,42 +67,48 @@
             (?:\\s*) - dispose of white space
             ([\\d]*) - grab integer
         */
+       //This small RegExp is for the "is" function, to see what very basic identifying selector is present
         reIs = RegExp('^([\\.\\[#\\:]?)(.*)'),
         reClass = new RegExp('[\\n\\t\\r]','g'),
         reIsNum = RegExp('^\\s*\\-?\\d*\\s*$'),
         reWhite = new RegExp('^\\s+|\\s+$','g'),
  
         removeWhite = function(string){
+            //notice reWhite, just two lines above, this removes whitespace from the ends of strings.
             return string.replace(reWhite,'');
         },
-        
+        //some utilities
         slice = Array.prototype.slice,
         
         isArray = function(obj){
-            return (Object.prototype.toString.call(obj).slice(8,-1) === 'Array');
+            return Object.prototype.toString.call(obj) === '[object Array]';  
         },
         
     Punch = function(selector,context){
         context = context || document;
         var results = [],
             temp;
+        //If the context is neither the document nor an element then return
         if(context.nodeType !== 1 && context.nodeType !== 9){
             return [];
         }
-        
+
         if(!selector || typeof selector !== 'string'){
             return [];
         }
-        
+        //Parse comma is slower than native-code "split", use it if there are no parens
         selector = selector.indexOf(')') === -1 ? selector.split(',') : parseComma(selector);
         
         if(!isArray(context)) context = [context];
-        
+        //cycle through the simple selectors
         for(var i = selector.length, n = 0; n < i; n++){
             results = results.concat(select(selector[n],context));
         }
         
-        
+        /*There is a possible optimization here; if there was never a comma in the master selector
+        then it is possible that this may not to get sorted, look into it. IE if selector length is
+        exactly equal to 1.
+        */
         return sortAll(results);
     },
 
@@ -130,7 +138,7 @@
         
     },
 
-    select = function(selector,context,forceCheck){
+    select = function(selector,context){
           var remainder = selector,
               newContext = [],
               first = true,
@@ -139,7 +147,7 @@
           do{
                 array = reCombinators.exec(remainder);
                 tag = array[2];
-                space = (first||space) ? true : forceCheck ? false : (array[1].length > 0);
+                space = (first||space) ? true : (array[1].length > 0);
                 combinator = array[4];
                 remainder = array[5];
                 first = false;
@@ -160,7 +168,7 @@
                         context = newContext;
                         newContext = [];
                     }
-                    space = forceCheck ? false : (array[3].length > 0);
+                    space = array[3].length > 0;
                 }
                 if(combinator.length > 0){
                     context = newContext.concat(combinators[combinator.charAt(0)](combinator,context,space));
@@ -175,7 +183,7 @@
         '[':function(combinator,context,space){
             combinator = reAttrCombinator.exec(combinator);
             var attribute = combinator[1],
-                operator = combinator[2],
+                operator = combinator[2] ? combinator[2]: ' ',
                 value = combinator[3],
                 newContext = [],
                 method = attrOperators[operator](value),
@@ -203,11 +211,21 @@
             return newContext;
         },
         
-        '#' : function(combinator,context){
+        '#': function(combinator,context,space){
             combinator = reIdCombinator.exec(combinator);
-            var newContext = [];
-            for(var i = context.length, n = 0; n < i; n++){
-                newContext.push(context[n].getElementById(combinator[1]));
+            var newContext = [],
+                i = context.length,
+                id = combinator[1];
+            if(space){
+                for(var n = 0; n < i; n++){
+                    newContext.push(context[n].getElementById(id));
+                }
+            } else {
+                while(i--){
+                    if(context[i].id === id){
+                        newContext.unshift(context[i]);
+                    }
+                }
             }
             return newContext;
         },
@@ -250,15 +268,15 @@
             combinator = reClassCombinator.exec(combinator);
             var newContext = [],
                 i = context.length,
-                hasClass;
+                isClass;
             if(space){
                 for(var n = 0; n < i; n++){
                     newContext = newContext.concat(getElementsByClass(context[n],combinator[1]));
                 }
             } else {
-                hasClass = hasClass(combinator[1]);
+                isClass = hasClass(combinator[1]);
                 while(i--){
-                    if(hasClass(context[i])){
+                    if(isClass(context[i])){
                         newContext.unshift(context[i]);
                     }
                 }
@@ -332,6 +350,12 @@
             return function(attr){
                 return val === attr;
             };
+        },
+        
+        ' ': function(){
+            return function(attr){
+                return attr;    
+            };
         }
     },
     
@@ -340,10 +364,10 @@
             value = reNthParser.exec(value);
             var number = value[1] !== '' ? value[1] : 1,
                 n = value[2] ? true : false,
-                offset = value[3] ? value[3] : '0',
+                offset = value[4] ? value[3]+value[4] : '0',
                 newContext = [],
                 i = context.length,
-                element,parentsChildren,index;
+                element,parentsChildren,index,length,tmp,check,times;
             if(!reIsNum.test(number)){
                 offset = number === 'even' ? '0' : '1';
                 number = '2';
@@ -355,15 +379,20 @@
                 while(i--){
                     element = context[i];
                     parentsChildren = getChildren(element.parentNode);
-                    index = parentsChildren.length;
+                    index = length = parentsChildren.length;
+                    times = Math.floor(length/Math.abs(number));
+                    check = 0;
                     while(
                         index-- && parentsChildren[index] !== element
                     );
-                    if((index + 1 + offset) % number === 0){
-                        newContext.unshift(element);
+                    index++;
+                    while(check <= times){
+                        tmp = (check * number) + offset;
+                        if(tmp === index) newContext.unshift(element);
+                        check++;
                     }
                 }
-            } else if(i >= Math.abs(number)){
+            } else{
                 while(i--){
                     if(getChildren(context[i].parentNode)[number - 1] === context[i]){
                         newContext.unshift(context[i]);
@@ -475,7 +504,7 @@
             var i = context.length,
                 newContext = [];
             while(i--){
-                if(context[i].firstChild){
+                if(!context[i].firstChild){
                     newContext.unshift(context[i]);
                 }
             }
