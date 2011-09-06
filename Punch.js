@@ -1,12 +1,10 @@
 (function(){
-    'use strict';
+    //'use strict';
     /*
         To do:
         1. Start banging away at some cross browser bugs
         2. Implement qSA
-        3. update class and id selector attributes to allow for appropriate UTF-8 values
-        4. Add more descriptive and better comments
-        5. refactor pseudo-controller to handle context, rather than the sub-function. Low-priority.
+        3. Add more descriptive and better comments
     */
     var reCombinators = RegExp('^(\\s*)([A-Za-z0-9\\*]*)(\\s*)(>(?:\\s*)|~(?:\\s*)|\\+(?:\\s*)|#[\\w\\u00c0-\\uFFFF\\-]*|\\[[\\w\\-\\:\\.\\|"\\*\\~\\^\\=\\$\\!\\s]*\\]{1}|:[\\w\\-]*\\({1}[^\\)]*\\){1}|:[\\w\\-]*|\\.[\\w\\u00c0-\\uFFFF\\-]*|){1}(.*)$'), 
         /*
@@ -122,13 +120,14 @@
             
         if(nextComma === -1){
         //We're done
+            //If anything remains push it into the selector array,"collected".
             if(selector.length > 0) collected.push(selector);
             return collected;
         }
         
-        if(nextComma < nextLParen && (nextComma > nextRParen || nextRParen > nextLParen) || nextRParen === -1){
         //Example:')... , ...(' or ', ...()' OR
         //Example: '(..)..,' and there are no parens ahead
+        if(nextComma < nextLParen && (nextComma > nextRParen || nextRParen > nextLParen) || nextRParen === -1){
             collected.push(selector.slice(0,nextComma));
             return parseComma(selector.slice(nextComma + 1), 0, collected);
         } else{
@@ -147,6 +146,8 @@
           do{
                 array = reCombinators.exec(remainder);
                 tag = array[2];
+                //If space is true, it means there is a space combinator present,
+                //we want to act as though the first selection has a space, even if it doesn't.
                 space = (first||space) ? true : (array[1].length > 0);
                 combinator = array[4];
                 remainder = array[5];
@@ -159,19 +160,20 @@
                                 newContext.push(context[n]);
                             }
                         }
-                        context = newContext;
-                        newContext = [];
                     } else {
                         for(i = context.length, n = 0; n < i; n++){
                             newContext = newContext.concat(slice.call(context[n].getElementsByTagName(tag))); 
                         }
-                        context = newContext;
-                        newContext = [];
+                        
                     }
+                    context = newContext;
+                    newContext = [];
+                    //there may be a second space after the tag, see if it's there
                     space = array[3].length > 0;
                 }
                 if(combinator.length > 0){
                     context = newContext.concat(combinators[combinator.charAt(0)](combinator,context,space));
+                    //the space is used up
                     space = false;
                 }
             } while(remainder);
@@ -182,30 +184,18 @@
     combinators = {
         '[':function(combinator,context,space){
             combinator = reAttrCombinator.exec(combinator);
+            context = space ? getContext(context) : context;
             var attribute = combinator[1],
                 operator = combinator[2] ? combinator[2]: ' ',
                 value = combinator[3],
                 newContext = [],
                 method = attrOperators[operator](value),
-                l = context.length,
-                attr, elements, i;
-            if(space){
-                while(l--){
-                    elements = slice.call(context[l].getElementsByTagName('*'));
-                    i = elements.length;
-                    while(i--){
-                        attr = elements[i].getAttribute(attribute);
-                        if(attr && method(attr)){
-                            newContext.unshift(elements[i]);
-                        }
-                    }
-                }
-            } else {
-                while(l--){
-                    attr = context[l].getAttribute(attribute);
-                    if(attr && method(attr)){
-                        newContext.unshift(context[l]);
-                    }
+                i = context.length,
+                attr;
+            while(i--){
+                attr = context[i].getAttribute(attribute);
+                if(attr && method(attr)){
+                    newContext.unshift(context[i]);
                 }
             }
             return newContext;
@@ -213,18 +203,13 @@
         
         '#': function(combinator,context,space){
             combinator = reIdCombinator.exec(combinator);
+            context = space ? getContext(context) : context;
             var newContext = [],
                 i = context.length,
                 id = combinator[1];
-            if(space){
-                for(var n = 0; n < i; n++){
-                    newContext.push(context[n].getElementById(id));
-                }
-            } else {
-                while(i--){
-                    if(context[i].id === id){
-                        newContext.unshift(context[i]);
-                    }
+            while(i--){
+                if(context[i].id === id){
+                    newContext.unshift(context[i]);
                 }
             }
             return newContext;
@@ -266,37 +251,30 @@
         
         '.' : function(combinator,context,space){
             combinator = reClassCombinator.exec(combinator);
+            context = space ? getContext(context) : context;
             var newContext = [],
                 i = context.length,
-                isClass;
-            if(space){
-                for(var n = 0; n < i; n++){
-                    newContext = newContext.concat(getElementsByClass(context[n],combinator[1]));
-                }
-            } else {
                 isClass = hasClass(combinator[1]);
-                while(i--){
-                    if(isClass(context[i])){
-                        newContext.unshift(context[i]);
-                    }
+            while(i--){
+                if(isClass(context[i])){
+                    newContext.unshift(context[i]);
                 }
             }
             return newContext;
         },
+        
         ':':function(combinator,context,space){
             combinator = reColonCombinator.exec(combinator);
-            var l = context.length,
+            context = space ? getContext(context) : context;
+            var i = context.length,
                 operator = combinator[1],
                 value = combinator[2],
                 newContext = [],
-                n = 0;
-            if(space){
-                while(n < l){
-                    newContext = newContext.concat(colonOperators[operator](slice.call(context[n].getElementsByTagName('*')),value));
-                    n++;
+                method = colonOperators[operator](value);
+            while(i--){
+                if(method(context[i])){
+                    newContext.unshift(context[i]);
                 }
-            } else {
-                newContext = colonOperators[operator](context,value);
             }
             return newContext;
         }
@@ -360,168 +338,127 @@
     },
     
     colonOperators = {
-        'nth-child': function(context,value){
+        'nth-child': function(value){
             value = reNthParser.exec(value);
             var number = value[1] !== '' ? value[1] : 1,
                 n = value[2] ? true : false,
-                offset = value[4] ? value[3]+value[4] : '0',
-                newContext = [],
-                i = context.length,
-                element,parentsChildren,index,length,tmp,check,times;
+                offset = value[4] ? value[3]+value[4] : '0';
             if(!reIsNum.test(number)){
                 offset = number === 'even' ? '0' : '1';
                 number = '2';
                 n = true;
             }
             number = parseInt(number,10);
+            offset = parseInt(offset, 10);
             if(n){
-                offset = parseInt(offset, 10);
-                while(i--){
-                    element = context[i];
-                    parentsChildren = getChildren(element.parentNode);
-                    index = length = parentsChildren.length;
-                    times = Math.floor(length/Math.abs(number));
-                    check = 0;
+                return function(element){
+                    var parentsChildren = getChildren(element.parentNode),
+                        index = parentsChildren.length,
+                        length = index,
+                        times = Math.floor(length/Math.abs(number)),
+                        check = 0,
+                        tmp;
                     while(
-                        index-- && parentsChildren[index] !== element
+                        index-- && parentsChildren[index] !== element  
                     );
                     index++;
                     while(check <= times){
                         tmp = (check * number) + offset;
-                        if(tmp === index) newContext.unshift(element);
+                        if(tmp === index) return true;
                         check++;
                     }
-                }
+                    return false;
+                };
             } else{
-                while(i--){
-                    if(getChildren(context[i].parentNode)[number - 1] === context[i]){
-                        newContext.unshift(context[i]);
-                    }
-                }
+                return function(element){
+                    return getChildren(element.parentNode)[number - 1] === element;
+                };
             }
-            
-            return newContext;
         },
         
-        'first-child': function(context){
-            var i = context.length,
-                newContext = [];
-            while(i--){
-                if(context[i] === getChildren(context[i].parentNode)[0]){
-                    newContext.unshift(context[i]);
-                }
-            }
-            return newContext;
+        'first-child': function(){
+            return function(element){
+                return element === getChildren(element.parentNode)[0];
+            };
         },
         
-        'last-child': function(context){
-            var i = context.length,
-                newContext = [],
-                tmp;
-            while(i--){
-                tmp = getChildren(context[i].parentNode);
-                if(context[i] === tmp[tmp.length - 1]){
-                    newContext.unshift(context[i]);
-                }
-            }
-            return newContext;
+        'last-child': function(){
+            return function(element){
+                var tmp = getChildren(element.parentNode);
+                return element === tmp[tmp.length - 1];
+            };
         },
         
-        'checked':function(context){
-            var i = context.length,
-                newContext = [];
-            while(i--){
-                if(context[i].checked){
-                    newContext.unshift(context[i]);
-                }
-            }
-            return newContext;
+        'checked':function(){
+            return function(element){
+                return element.checked;
+            };
         },
         
-        'not': function(context,value) {
+        'not': function(value) {
             value = value.split(',');
-            var i = context.length,
-                newContext = [],
-                bool, n;
-            while(i--){
-                n = value.length - 1;
-                bool = false;
+            
+            return function(element){
+                var bool = false,
+                    n = value.length - 1;
                 while(
-                    bool = !is(context[i],value[n]),
+                    bool = !is(element,value[n]),
                     bool && n--
                 );
-                if(bool) newContext.unshift(context[i]);
-            }
-            return newContext;
+                return bool;
+            };
         },
         
-        'disabled': function(context){
-            var i = context.length,
-                newContext = [];
-            while(i--){
-                if(context[i].disabled && context[i].type !== 'hidden'){
-                    newContext.unshift(context[i]);
-                }
-            }
-            return newContext;
+        'disabled': function(){
+            
+            return function(element){
+                return element.disabled && element.type !== 'hidden';
+            };
         },
         
-        'enabled': function(context){
-            var i = context.length,
-                newContext = [];
-            while(i--){
-                if(!context[i].disabled){
-                    newContext.unshift(context[i]);
-                }
-            }
-            return newContext;
+        'enabled': function(){
+            
+            return function(element){
+                return !element.disabled;
+            };
         },
         
-        'selected': function(context){
-            var i = context.length,
-                newContext = [];
-            while(i--){
-                if(context[i].selected){
-                    newContext.unshift(context[i]);
-                }
-            }
-            return newContext;
+        'selected': function(){
+            
+            return function(element){
+                return element.selected;
+            };
         },
         
-        'link': function(context){
-            var i = context.length,
-                newContext = [],
-                tmp;
-            while(i--){
-                if(context[i].href){
-                    newContext.unshift(context[i]);
-                }
-            }
-            return newContext;
+        'link': function(){
+            
+            return function(element){
+                return element.href;
+            };
         },
         
-        'empty': function(context){
-            var i = context.length,
-                newContext = [];
-            while(i--){
-                if(!context[i].firstChild){
-                    newContext.unshift(context[i]);
-                }
-            }
-            return newContext;
+        'empty': function(){
+            
+            return function(element){
+                return !element.firstChild;
+            };
         },
         
-        'root': function(context){
-            var i = context.length,
-                newContext = [];
-            while(i--){
-                if(context[i].parentNode === window.document){
-                    newContext.unshift(context[i]);
-                }
-            }
-            return newContext;
+        'root': function(){
+            
+            return function(element){
+                return element.parentNode === window.document;
+            };
         }
         
+    },
+    
+    getContext = function(context){
+        var newContext = [];
+        for(var l = context.length, i = 0; i < l; i++){
+            newContext = newContext.concat(slice.call(context[i].getElementsByTagName('*')));
+        }
+        return newContext;
     },
     
     is = function(element,selector){
