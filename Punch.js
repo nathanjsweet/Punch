@@ -25,7 +25,7 @@
             ){1}
             (.*)$ - grab remainder for later parsing
         */
-        reAttrCombinator = RegExp('^(?:\\[){1}([\\w\\.\\:]*)(\\||\\!|\\~|\\^|\\*|\\$|\\=|){1}(?:\\=)?(")?([^\\]]*)'),
+        reAttrCombinator = RegExp('^(?:\\[){1}([\\w\\.\\:]*)(\\||\\!|\\~|\\^|\\*|\\$|\\=|){1}(?:\\=)?("|\')?([^\\]]*)'),
         /*
             reAttrCombinator:
             ^(?:\\[){1} - dispose of brace
@@ -40,7 +40,7 @@
                 \\=| - grab "=" combinator OR nothing
             ){1}
             (?:\\=)? - dispose of remaining equal sign, if present
-            (\\"|)? - grab the beginning quote, if present
+            (\\"|\')? - grab the beginning quote, if present
             ([^\\]]*) - grab the value of the expression.
         */
         reIdCombinator = RegExp('(?:#){1}([^\\s]*)'),
@@ -85,8 +85,8 @@
         //cache last selector to help error reporting;
         lastSelector,
         
-    ERROR = function(string){
-        throw lastSelector + ' - ' + (string ? string : 'is invalid sytax.');
+    ERROR = function(){
+        throw lastSelector + ' - is invalid sytax.';
     },
     
     Punch = function(selector,context){
@@ -156,6 +156,7 @@
               i,n,tag,space,combinator,array;
           do{
                 count++;
+                if(count > 100) ERROR();
                 array = reCombinators.exec(remainder);
                 lastSelector = array[0];
                 tag = array[2];
@@ -165,7 +166,6 @@
                 combinator = array[4];
                 remainder = array[5];
                 first = false;
-                if(count > 100) ERROR();
                 if(tag.length > 0){
                     if(!space){
                         tag = array[2].toUpperCase();
@@ -208,8 +208,7 @@
                 method,attr;
                 
             if(quote || reHasWhite.test(value)){
-                if(!quote) ERROR('attribute value must have quotes if it has whitespace');
-                if(quote !== value.slice(-1)) ERROR('attribute value must end in quote if it started with one.');
+                if(!quote || quote !== value.slice(-1)) ERROR();
                 value = value.slice(0,-1);
             }
             method = attrOperators[operator](value);
@@ -652,5 +651,5 @@
         
         return elements;
     }
-    window.Punch = Punch;
+    
 }());
