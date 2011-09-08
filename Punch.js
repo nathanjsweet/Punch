@@ -1,12 +1,12 @@
 (function(){
-    //'use strict';
+    'use strict';
     /*
         To do:
         1. Start banging away at some cross browser bugs
         2. Implement qSA
         3. Add more descriptive and better comments
     */
-    var reCombinators = RegExp('^(\\s*)([A-Za-z0-9\\*]*)(\\s*)(>(?:\\s*)|~(?:\\s*)|\\+(?:\\s*)|#[\\w\\u00c0-\\uFFFF\\-]*|\\[[\\w\\-\\:\\.\\|"\\*\\~\\^\\=\\$\\!\\s]*\\]{1}|:[\\w\\-]*\\({1}[^\\)]*\\){1}|:[\\w\\-]*|\\.[\\w\\u00c0-\\uFFFF\\-]*|){1}(.*)$'), 
+    var reCombinators = RegExp('^(\\s*)([A-Za-z0-9\\*]*)(\\s*)(>(?:\\s*)|~(?:\\s*)|\\+(?:\\s*)|#[\\w\\u00c0-\\uFFFF\\-]*|\\[[\\w\\-\\:\\.\\|"\'\\*\\~\\^\\=\\$\\!\\s]*\\]{1}|:[\\w\\-]*\\({1}[^\\)]*\\){1}|:[\\w\\-]*|\\.[\\w\\u00c0-\\uFFFF\\-]*|){1}(.*)$'), 
         /*
             combinators:
             ^(\\s*) - grab white space preceding tagName, means it descends from.
@@ -16,16 +16,16 @@
                 >(?:[\\s]*)| - grab children selector, move forward OR
                 ~(?:\\s*)| - grab general next sibling selector, move forward OR
                 \\+(?:\\s*)| - grab immediate next sibling selector, move forward OR
-                #[\\w\\-]*| - grab id selector, move forward OR
+                #[\\w\\\\u00c0-\\uFFFF\\-]*| - grab id selector, move forward OR
                 \\[[\\w\\-\\:\\.\\|"\\*\\~\\^\\=\\$\\!\\s]*\\]{1}| - grab attribute selector, move forward OR
                 :[\\w\\-]*\\({1}[^\\)]*\\){1}| - grab pseudo-selector WITH parentheses, move forward OR 
                 :[\\w\\-]*| - - grab pseudo-selector WITHOUT parentheses, move forward OR
-                \\.[\\w\\-]*| - grab class-selector and relevant values, morve forward OR
+                \\.[\\w\\\\u00c0-\\uFFFF\\-]*| - grab class-selector and relevant values, morve forward OR
                  - grab nospace to delimit remainder
             ){1}
             (.*)$ - grab remainder for later parsing
         */
-        reAttrCombinator = RegExp('^(?:\\[){1}([\\w\\.\\:]*)(\\||\\!|\\~|\\^|\\*|\\$|\\=|){1}(?:\\=)?(?:\\")?([^\\]\\"]*)'),
+        reAttrCombinator = RegExp('^(?:\\[){1}([\\w\\.\\:]*)(\\||\\!|\\~|\\^|\\*|\\$|\\=|){1}(?:\\=)?(")?([^\\]]*)'),
         /*
             reAttrCombinator:
             ^(?:\\[){1} - dispose of brace
@@ -40,8 +40,8 @@
                 \\=| - grab "=" combinator OR nothing
             ){1}
             (?:\\=)? - dispose of remaining equal sign, if present
-            (?:\\")? - dispose of beginning quoute, if present
-            ([^\\]\\"]*) - grab the value of the expression.
+            (\\"|)? - grab the beginning quote, if present
+            ([^\\]]*) - grab the value of the expression.
         */
         reIdCombinator = RegExp('(?:#){1}([^\\s]*)'),
         reChildCombinator = RegExp('(?:[>\\s]*)(.*)'),
@@ -70,6 +70,7 @@
         reClass = new RegExp('[\\n\\t\\r]','g'),
         reIsNum = RegExp('^\\s*\\-?\\d*\\s*$'),
         reWhite = new RegExp('^\\s+|\\s+$','g'),
+        reHasWhite = RegExp('\\s'),
  
         removeWhite = function(string){
             //notice reWhite, just two lines above, this removes whitespace from the ends of strings.
@@ -81,7 +82,13 @@
         isArray = function(obj){
             return Object.prototype.toString.call(obj) === '[object Array]';  
         },
+        //cache last selector to help error reporting;
+        lastSelector,
         
+    ERROR = function(string){
+        throw lastSelector + ' - ' + (string ? string : 'is invalid sytax.');
+    },
+    
     Punch = function(selector,context){
         context = context || document;
         var results = [],
@@ -99,8 +106,12 @@
         
         if(!isArray(context)) context = [context];
         //cycle through the simple selectors
-        for(var i = selector.length, n = 0; n < i; n++){
-            results = results.concat(select(selector[n],context));
+        try{
+            for(var i = selector.length, n = 0; n < i; n++){
+                results = results.concat(select(selector[n],context));
+            }
+        } catch(e){
+            ERROR();
         }
         
         /*There is a possible optimization here; if there was never a comma in the master selector
@@ -141,10 +152,12 @@
           var remainder = selector,
               newContext = [],
               first = true,
+              count = 0,
               i,n,tag,space,combinator,array;
-              
           do{
+                count++;
                 array = reCombinators.exec(remainder);
+                lastSelector = array[0];
                 tag = array[2];
                 //If space is true, it means there is a space combinator present,
                 //we want to act as though the first selection has a space, even if it doesn't.
@@ -152,6 +165,7 @@
                 combinator = array[4];
                 remainder = array[5];
                 first = false;
+                if(count > 100) ERROR();
                 if(tag.length > 0){
                     if(!space){
                         tag = array[2].toUpperCase();
@@ -187,11 +201,18 @@
             context = space ? getContext(context) : context;
             var attribute = combinator[1],
                 operator = combinator[2] ? combinator[2]: ' ',
-                value = combinator[3],
+                quote = combinator[3],
+                value = combinator[4],
                 newContext = [],
-                method = attrOperators[operator](value),
                 i = context.length,
-                attr;
+                method,attr;
+                
+            if(quote || reHasWhite.test(value)){
+                if(!quote) ERROR('attribute value must have quotes if it has whitespace');
+                if(quote !== value.slice(-1)) ERROR('attribute value must end in quote if it started with one.');
+                value = value.slice(0,-1);
+            }
+            method = attrOperators[operator](value);
             while(i--){
                 attr = context[i].getAttribute(attribute);
                 if(attr && method(attr)){
@@ -272,7 +293,7 @@
                 newContext = [],
                 method = colonOperators[operator](value);
             while(i--){
-                if(method(context[i])){
+                if(method(context[i],i)){
                     newContext.unshift(context[i]);
                 }
             }
@@ -353,25 +374,41 @@
             if(n){
                 return function(element){
                     var parentsChildren = getChildren(element.parentNode),
-                        index = parentsChildren.length,
-                        length = index,
-                        times = Math.floor(length/Math.abs(number)),
-                        check = 0,
-                        tmp;
+                        index = parentsChildren.length;
                     while(
                         index-- && parentsChildren[index] !== element  
                     );
                     index++;
-                    while(check <= times){
-                        tmp = (check * number) + offset;
-                        if(tmp === index) return true;
-                        check++;
-                    }
-                    return false;
+                    return (number > 0 ? (index - offset) % number : index - offset) === 0 ? true : false;
                 };
             } else{
                 return function(element){
                     return getChildren(element.parentNode)[number - 1] === element;
+                };
+            }
+        },
+        
+        'nth':function(value){
+             value = reNthParser.exec(value);
+            var number = value[1] !== '' ? value[1] : 1,
+                n = value[2] ? true : false,
+                offset = value[4] ? value[3]+value[4] : '0';
+            if(!reIsNum.test(number)){
+                offset = number === 'even' ? '0' : '1';
+                number = '2';
+                n = true;
+            }
+            number = parseInt(number,10);
+            offset = parseInt(offset, 10);
+            if(n){
+                return function(element,index){
+                    index++;
+                    return (number > 0? (index - offset) % number : index - offset) === 0 ? true : false;
+                };
+            } else{
+                number--;
+                return function(element,i){
+                    return number === i;
                 };
             }
         },
@@ -412,7 +449,7 @@
         'disabled': function(){
             
             return function(element){
-                return element.disabled && element.type !== 'hidden';
+                return (element.disabled && element.type !== 'hidden');
             };
         },
         
