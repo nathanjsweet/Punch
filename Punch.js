@@ -55,10 +55,11 @@
             (?:\\(?) - dispose of the right parenthesis
             ([^\\)]*) - grab all characters that aren't a left parenthesis
         */
-        reNthParser = RegExp('(?:\\s*)(odd|even|\\-?[\\d]+){1}(n?)(?:\\s*)([\\-+]?)(?:\\s*)([\\d]*)'),
+        reNthParser = RegExp('(?:\\s*)(\\-?)(odd|even|[\\d]*){1}(n?)(?:\\s*)([\\-+]?)(?:\\s*)([\\d]*)'),
         /*
             (?:\\s*) - dispose of all beginning white  space
-            (odd|even|\\-?[\\d]+){1} - grab one occurence of the word 'odd', or 'even', or an integer
+            (\\-?) - grab negative operator if present
+            (odd|even|\\-?[\\d]*){1} - grab one occurence of the word 'odd', or 'even', or an integer
             (n?) - grab one or zero occurences of the letter 'n'
             (?:\\s*) - dispose of white  space after integer or 'n'
             (\\-|\\+)? - grab one or zero occurences of a minus or plus sign
@@ -189,6 +190,7 @@
                     context = newContext.concat(combinators[combinator.charAt(0)](combinator,context,space));
                     //the space is used up
                     space = false;
+                    newContext = [];
                 }
             } while(remainder);
             
@@ -359,57 +361,54 @@
     
     colonOperators = {
         'nth-child': function(value){
-            value = reNthParser.exec(value);
-            var number = value[1] !== '' ? value[1] : 1,
-                n = value[2] ? true : false,
-                offset = value[4] ? value[3]+value[4] : '0';
-            if(!reIsNum.test(number)){
-                offset = number === 'even' ? '0' : '1';
-                number = '2';
-                n = true;
-            }
-            number = parseInt(number,10);
-            offset = parseInt(offset, 10);
-            if(n){
-                return function(element){
-                    var parentsChildren = getChildren(element.parentNode),
-                        index = parentsChildren.length;
-                    while(
-                        index-- && parentsChildren[index] !== element  
-                    );
-                    index++;
-                    return (number > 0 ? (index - offset) % number : index - offset) === 0 ? true : false;
-                };
-            } else{
-                return function(element){
-                    return getChildren(element.parentNode)[number - 1] === element;
-                };
-            }
+            return nth(value,function(number,offset,n){
+                if(n){
+                    return function(element){
+                        var parentsChildren = getChildren(element.parentNode),
+                            index = parentsChildren.length,
+                            tmp;
+                        while(
+                            index-- && parentsChildren[index] !== element  
+                        );
+                        index++;
+                        return number === 0 ? (index - offset) === 0 ? true : false : (tmp = ((index - offset) / number), tmp >= 0 && (tmp % 1) === 0);
+                    };
+                 } else{
+                    number--;
+                    return function(element){
+                        return getChildren(element.parentNode)[number] === element;
+                    };
+                }
+            });
         },
         
         'nth':function(value){
-             value = reNthParser.exec(value);
-            var number = value[1] !== '' ? value[1] : 1,
-                n = value[2] ? true : false,
-                offset = value[4] ? value[3]+value[4] : '0';
-            if(!reIsNum.test(number)){
-                offset = number === 'even' ? '0' : '1';
-                number = '2';
-                n = true;
-            }
-            number = parseInt(number,10);
-            offset = parseInt(offset, 10);
-            if(n){
+            return nth(value,function(number,offset,n){
                 return function(element,index){
+                    var tmp;
                     index++;
-                    return (number > 0? (index - offset) % number : index - offset) === 0 ? true : false;
+                    return n ? number === 0 ? (index - offset) === 0 ? true : false : (tmp = ((index - offset) / number), tmp >= 0 && (tmp % 1) === 0) : (number - 1) === index;
+
                 };
-            } else{
-                number--;
-                return function(element,i){
-                    return number === i;
-                };
-            }
+           });
+        },
+        
+        'nth-of-type':function(value){
+            return nth(value,function(number,offset,n){
+                return function(element){
+                    var parentsChildren = getChildren(element.parenNode),
+                        i = parentsChildren.length,
+                        nodeName = element.nodeName,
+                        index = 0;
+                        count = 0,
+                        tmp;
+                    while(index < i){
+                        if(nodeName === parentsChildren[index].nodeName) count++;
+                        if(element === parentsChildren[index]) break;
+                    }
+                    return n ? number === 0 ? (count - offset) === 0 ? true : false : (tmp = ((count - offset) / number), tmp >= 0 && (tmp % 1) === 0) : (number - 1) === count;
+                 };
+            });  
         },
         
         'first-child': function(){
@@ -524,6 +523,22 @@
         }
         return bool;
     },
+    
+    nth = function(value,func){
+        value = reNthParser.exec(value);
+            var number = value[2] !== '' ? value[2] : 1,
+                n = value[3] ? true : false,
+                offset = value[5] ? value[4] + value[5] : '0';
+            if(!reIsNum.test(number)){
+                offset = number === 'even' ? '0' : '1';
+                number = '2';
+                n = true;
+            }
+            number = parseInt(value[1] + number,10);
+            offset = parseInt(offset, 10);
+            return func(number,offset,n)
+    },
+    
     //tmp variable used by other functions to determine things.
     el,
     nextElement = (el = document.createElement('div'),
@@ -651,5 +666,5 @@
         
         return elements;
     }
-    
+    window.Punch = Punch;
 }());
