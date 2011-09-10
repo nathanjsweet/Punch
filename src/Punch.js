@@ -6,16 +6,16 @@
         2. Implement qSA
         3. Add more descriptive and better comments
     */
-    var reCombinators = RegExp('^(\\s*)([A-Za-z0-9\\*]*)(\\s*)(>(?:\\s*)|~(?:\\s*)|\\+(?:\\s*)|#[\\w\\u00c0-\\uFFFF\\-]*|\\[[\\w\\-\\:\\.\\|"\'\\*\\~\\^\\=\\$\\!\\s]*\\]{1}|:[\\w\\-]*\\({1}[^\\)]*\\){1}|:[\\w\\-]*|\\.[\\w\\u00c0-\\uFFFF\\-]*|){1}(.*)$'), 
+    var reCombinators = RegExp('^(\\s*)([A-Za-z0-9\\*]*)(\\s*)(>\\s*|~\\s*|\\+\\s*|#[\\w\\u00c0-\\uFFFF\\-]*|\\[[\\w\\-\\:\\.\\|"\'\\*\\~\\^\\=\\$\\!\\s]*\\]{1}|:[\\w\\-]*\\({1}[^\\)]*\\){1}|:[\\w\\-]*|\\.[\\w\\u00c0-\\uFFFF\\-]*|){1}(.*)$'), 
         /*
             combinators:
             ^(\\s*) - grab white space preceding tagName, means it descends from.
             ([A-Za-z0-9\\*]*) - grab tag name
             (\\s*) - grab white space proceding tagName, all the tagNames have descendent selectors.
             (
-                >(?:[\\s]*)| - grab children selector, move forward OR
-                ~(?:\\s*)| - grab general next sibling selector, move forward OR
-                \\+(?:\\s*)| - grab immediate next sibling selector, move forward OR
+                >\\s*| - grab children selector, move forward OR
+                ~\\s*| - grab general next sibling selector, move forward OR
+                \\+\\s*| - grab immediate next sibling selector, move forward OR
                 #[\\w\\\\u00c0-\\uFFFF\\-]*| - grab id selector, move forward OR
                 \\[[\\w\\-\\:\\.\\|"\\*\\~\\^\\=\\$\\!\\s]*\\]{1}| - grab attribute selector, move forward OR
                 :[\\w\\-]*\\({1}[^\\)]*\\){1}| - grab pseudo-selector WITH parentheses, move forward OR 
@@ -59,7 +59,7 @@
         /*
             (?:\\s*) - dispose of all beginning white  space
             (\\-?) - grab negative operator if present
-            (odd|even|\\-?[\\d]*){1} - grab one occurence of the word 'odd', or 'even', or an integer
+            (odd|even|\\-?[\\d]?){1} - grab one occurence of the word 'odd', or 'even', or an integer
             (n?) - grab one or zero occurences of the letter 'n'
             (?:\\s*) - dispose of white  space after integer or 'n'
             (\\-|\\+)? - grab one or zero occurences of a minus or plus sign
@@ -89,11 +89,11 @@
     ERROR = function(){
         throw lastSelector + ' - is invalid sytax.';
     },
-    
+   
     Punch = function(selector,context){
         context = context || document;
         var results = [],
-            i, l;
+            l,i
         //If the context is neither the document nor an element then return
         if(context.nodeType !== 1 && context.nodeType !== 9){
             return results;
@@ -104,7 +104,7 @@
         }
         //Parse comma is slower than native-code "split", use it if there are no parens
         selector = selector.indexOf(')') === -1 ? selector.split(',') : parseComma(selector);
-        
+      
         if(!isArray(context)) context = [context];
         //cycle through the simple selectors
         try{
