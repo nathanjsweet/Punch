@@ -93,14 +93,14 @@
     Punch = function(selector,context){
         context = context || document;
         var results = [],
-            temp;
+            i, l;
         //If the context is neither the document nor an element then return
         if(context.nodeType !== 1 && context.nodeType !== 9){
-            return [];
+            return results;
         }
 
         if(!selector || typeof selector !== 'string'){
-            return [];
+            return results;
         }
         //Parse comma is slower than native-code "split", use it if there are no parens
         selector = selector.indexOf(')') === -1 ? selector.split(',') : parseComma(selector);
@@ -108,8 +108,8 @@
         if(!isArray(context)) context = [context];
         //cycle through the simple selectors
         try{
-            for(var i = selector.length, n = 0; n < i; n++){
-                results = results.concat(select(selector[n],context));
+            for(l = selector.length, i = 0; i < l; i++){
+                results = results.concat(select(selector[i],context));
             }
         } catch(e){
             ERROR();
