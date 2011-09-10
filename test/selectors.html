@@ -1,0 +1,306 @@
+<!html>
+<html xmlns="http://www.w3.org/1999/xhtml" xml:lang="en" id="html">
+    <head id="head">
+ 		
+<meta charset="utf-8">
+<meta name="http-equiv" content="Content-type: text/html; charset=UTF-8"/>
+		<title id="title">Selector Test Suite</title>
+		<style type=text/css id="sytle1">
+			html, body, div, span, object, iframe,
+h1, h2, h3, h4, h5, h6, p, blockquote, pre,
+abbr, address, cite, code, del, dfn, em, img, ins, kbd, q, samp,
+small, strong, sub, sup, var, b, i, dl, dt, dd, ol, ul, li,
+fieldset, form, label, legend,
+table, caption, tbody, tfoot, thead, tr, th, td{
+  margin: 0;
+  padding: 0;
+  border: 0;
+  font-size: 100%;
+  font: inherit;
+  vertical-align: baseline;
+}
+blockquote, q { 
+	quotes: none; 
+}
+blockquote:before, blockquote:after,
+q:before, q:after { 
+	content: ""; 
+	content: none; 
+}
+ol ul, ol li {
+	 margin: 0;
+	 list-style:none;
+	 list-style-image: none;
+}
+td { 
+	vertical-align: top; 
+}
+h1{
+	font-weight:900;
+	font-size:24px;
+}
+/*COLORS:
+body		3B8686
+ */
+body{
+	background-color: #3B8686;
+	color:#072D42;
+	padding:20px;
+	font-family:"Courier New", Courier, monospace
+}
+ol{
+	padding:10px;
+}
+ol li{
+	margin-bottom:15px;
+	background-color:#A8DBA8;
+	padding:8px;
+     -moz-box-shadow: 1px 1px 4px #ffffff; 
+  	-webkit-box-shadow: 1px 1px 4px #ffffff; 
+    box-shadow: 1px 1px 4px #ffffff;
+    -moz-border-radius: 5px; 
+  	-webkit-border-radius: 5px; 
+    border-radius: 5px; 
+  	-moz-background-clip: padding;
+   -webkit-background-clip: padding-box;
+    background-clip: padding-box; 
+}
+
+ol li.Success{
+	background-color:#79BD9A;
+}
+ol li.Failure{
+	background-color:#DB5856;
+}
+ol li span {
+	font-weight:900;
+	font-size:14px;
+}
+#root1{
+	display:none;
+}
+		</style>
+		<script src="selector.js" id="script1" charset="utf-8"></script>
+		<!--<script src="https://ajax.googleapis.com/ajax/libs/jquery/1.6.2/jquery.js" id="script1"></script>-->
+		<script type="text/javascript" id="script2" charset="utf-8">
+			window.onload = function(){
+					var selectors = [
+					//WARNING: Wild card must execute first, otherwise it will fail.
+					//['','*',["html", "head", "title", "sytle1", "script1", "script2", "body", "root1", "h1", "div1", "img1", "anchor1", "h2", "form1", "input1", "input2", "empty", "test"]],
+					['','body',['body']],
+					[' w/ whitespace trim',' body ',['body']],
+					['','img[align]',['img1']],
+					[' w/ whitespace trim',' img[align] ',['img1']],
+					[' w/ incorrect value','img[title]',[]],
+					['','img[align=left]',['img1']],
+					[' w/ quotes','img[align="left"]',['img1']],
+					[' w/ whitespace trim',' img[align=left] ',['img1']],
+					[' w/ incorrect value','img[align=right]',[]],
+					[' w/ long string','a[title=foo bar somethingJointed foo]',[]],
+					[' w/ long string w/ quotes','a[title="foo bar somethingJointed foo"]',['anchor1']],
+					[' w/ inner quote w/ quotes','span[title="foo\'s bar"]',['span1']],
+					['','a[title~=bar]',['anchor1']],
+					[' w/ quotes','a[title~="bar"]',['anchor1']],
+					[' w/ whitespace trim',' a[title~=bar] ',['anchor1']],
+					[' w/ bad value','a[title~=somethingDis]',[]],
+					['','a[title^=foo]' ,['anchor1']],
+					[' w/ quotes','a[title^="foo"]' ,['anchor1']],
+					[' w/ whitespace trim',' a[title^=foo] ' ,['anchor1']],
+					[' w/ incorrect value','a[title^=oo ]' ,[]],
+					[' w/ long value','a[title^=foo bar]' ,[]],
+					[' w/ long value w/ quotes','a[title^="foo bar"]' ,['anchor1']],
+					['','a[title$=foo]' ,['anchor1']],
+					[' w/ quotes','a[title$="foo"]' ,['anchor1']],
+					[' w/ whitespace trim',' a[title$=foo] ' ,['anchor1']],
+					[' w/ incorrect value','a[title$=foob]' ,[]],
+					[' w/ long value','a[title$=bar somethingJointed foo]' ,[]],
+					[' w/ long value w/ quotes','a[title$="bar somethingJointed foo"]' ,['anchor1']],
+					['','a[title*=thing]' ,['anchor1']],
+					[' w/ quotes','a[title*="thing"]' ,['anchor1']],
+					[' w/ whitespace trim',' a[title*=thing] ' ,['anchor1']],
+					[' w/ incorrect value','a[title*=thingDisJointed]' ,[]],
+					[' w/ long value','a[title*=Jointed foo]' ,[]],
+					[' w/ long value w/ quotes','a[title*="Jointed foo"]' ,['anchor1']],
+					['','img[align!=right]' ,['img1']],
+					[' w/ quotes','img[align!="right"]' ,['img1']],
+					[' w/ whitespace trim',' img[align!=right]' ,['img1']],
+					[' w/ incorrect value',' img[align!=left]' ,[]],
+					['','html:root',['html']],
+					[' w/ whitespace trim',' html:root ',['html']],
+					[' w/ incorrect value','body:root',[]],
+					['','body:nth-child(2n)',['body']],
+					[' w/ whitespace trim',' body:nth-child( 2n ) ',['body']],
+					['','body:nth-child(even)',['body']],
+					[' w/ whitespace trim',' body:nth-child( even ) ',['body']],
+					[' w/ incorrect value','head:nth-child(2n)',[]],
+					[' w/ incorrect value','head:nth-child(even)',[]],
+					['','head:nth-child(2n+1)',['head']],
+					[' w/ whitespace trim',' head:nth-child( 2n + 1 ) ',['head']],
+					['','head:nth-child(odd)',['head']],
+					[' w/ whitespace trim',' head:nth-child( odd ) ',['head']],
+					[' w/ incorrect value','body:nth-child(2n+1)',[]],
+					[' w/ incorrect value','body:nth-child(odd)',[]],
+					['','body:nth-child(2)',['body']],
+					[' w/ whitespace trim',' body:nth-child( 2 ) ',['body']],
+					[' w/ incorrect value','head:nth-child(2)',[]],
+					[' alternate1','#root1>*:nth-child(-2n)',[]],
+					[' alternate2','#root1>*:nth-child(-2n+1)',['h1']],
+					[' alternate3','#root1>*:nth-child(3n)',['anchor1']],
+					[' alternate4','#root1>*:nth-child(3n+1)',['h1','h2']],
+					[' alternate4','#root1>*:nth-child(-n+3)',['h1','div1','anchor1']],
+
+					['','head:first-child',['head']],
+					[' w/ whitespace trim','head:first-child',['head']],
+					[' w/ incorrect value','body:first-child',[]],
+					['','body:last-child',['body']],
+					[' w/ whitespace trim',' body:last-child ',['body']],
+					[' w/ incorrect value','head:last-child',[]],
+					['','#empty:empty',['empty']],
+					[' w/ whitespace trim',' #empty:empty ',['empty']],
+					[' w/ incorrect value','body:empty ',[]],
+					['','a:link',['anchor1']],
+					[' w/ whitespace trim',' a:link ',['anchor1']],
+					[' w/ incorrect value',' img:link ',[]],
+					['','input:enabled',['input2']],
+					[' w/ whitespace trim',' input:enabled ',['input2']],
+					[' w/ incorrect value','#input1:enabled',[]],
+					['','input:disabled',['input1']],
+					[' w/ whitespace trim',' input:disabled ',['input1']],
+					[' w/ incorrect value','#input2:disabled ',[]],
+					['','input:checked',['input2']],
+					[' w/ whitespace trim',' input:checked ',['input2']],
+					[' w/ incorrect value','#input1:checked',[]],
+					['','.test1',['div1']],
+					[' w/ whitespace trim',' .test1 ',['div1']],
+					[' w/ incorrect value','body.test1',[]],
+					['','#root1',['root1']],
+					['w/ UTF-8 values','#台北Táiběi',['台北Táiběi']],
+					['w/ UTF-8 values and whitespace',' #台北Táiběi ',['台北Táiběi']],
+					['w/ UTF-8 values, mulitple','#台北Táiběi,.台北Táiběi',['台北Táiběi','root2-p1']],
+					['w/ UTF-8 values, mulitple, whitespace',' #台北Táiběi , .台北Táiběi ',['台北Táiběi','root2-p1']],
+
+					[' w/ incorrect value','body#root1',[]],
+					['','#root1 div',['div1','div2']],
+					[' w/ whitespace trim',' #root1 div ',['div1','div2']],
+					[' w/ incorrect value','body h3',[]],
+					['','#root1>div',['div1']],
+					[' w/ whitespace trim',' #root1 > div ',['div1']],
+					['','head+body',['body']],
+					[' w/ whitespace trim',' head + body ',['body']],
+					[' w/ incorrect value',' body + head ',[]],
+					['','#root1~ol',['test']],
+					[' w/ whitespace trim',' #root1 ~ ol ',['test']],
+					[' w/ incorrect value',' #anchor1~h1',[]],
+					['','#root1,#empty',['root1','empty']],
+					[' w/ whitespace trim',' #root1 , #empty ',['root1','empty']],
+					[' in incorrect order','#empty,#root1',['root1','empty']],
+					
+					
+				],
+				l,i,test,tmp,
+				
+				Test = function (fx,arr,i){
+					var notes = arr[0] ?  arr[0] :'',
+						selector = arr[1],
+						match = arr[2],
+						li = document.createElement('li'),
+						html = '<span>'+selector+'</span>'+notes+' - ',
+						error1,error2,els,timer,html,cache,i,l;
+					try{
+						timer = +new Date();
+						els = fx(selector);
+						timer = +new Date() - timer;
+					} catch(e){
+						timer = +new Date() - timer;
+						error = e;
+						//console.log(i,error,match);
+						if(!match || match.length === 0){
+							li.className = 'Success';
+							html += 'Selector was supposed to fail and did. <span>Time: '+timer+'ms.</span>';
+						} else {
+							li.className = 'Failure';
+							html += 'Selector failed. <span>Time: '+timer+'ms.</span>';
+						}
+						li.innerHTML = html;
+						return li;
+					}
+						if(match.length === 0 && els && els.length === 0){
+							li.className = 'Success';
+							html+="Selector was supposed to fail and did <span>Time: "+timer+"ms.</span>";
+						} else if(match.length === 0 && (!els || els.length !== 0)){
+							li.className = 'Failure';
+							html+="Selector was supposed to fail and didn't <span>Time: "+timer+"ms.</span>";
+						} else if(match.length > els.length || match.length < els.length){
+							li.className = 'Failure';
+							html +='Selector returned too '+(match.length > els.length ?'few':'many')+' elements. <span>Time: '+timer+'ms.</span>';
+						} else if(match.length === els.length){
+							cache = {}
+							for(l = match.length, i = 0; i < l; i++){
+								if(els[i].id !== match[i]){
+									error1 = true;
+								}
+								cache[els[i].id] = true;
+							}
+							if(error1){
+								for(l = match.length, i = 0; i < l; i++){
+									if(!cache[match[i]]){
+										error2 = true;
+									}
+								}
+							}
+							
+							if(!error1 && !error2){
+								li.className = 'Success';
+								html +='Selector returned the right elements in the correct order. <span>Time: '+timer+'ms.</span>';
+							} else if(!error2){
+								li.className = 'Failure';
+								html+='Selector returned the right elements, but in the incorrect order. <span>Time: '+timer+'ms.</span>';
+							} else{
+								li.className = 'Failure';
+								html+='Selector returned incorrect elements. <span>Time: '+timer+'</span>';
+							}
+						} else{
+							li.className = 'Unsure';
+							html += 'Selector may or may not have succeeded, but did not meet this test\'s criterion to pass. <span>Time: '+timer+'ms.</span>';
+						}
+						li.innerHTML = html;
+						return li;
+				};
+
+				test = document.getElementById('test');
+				l = selectors.length; i = 0;
+				var q = document.querySelectorAll
+				while(i < l){
+					//console.log(i);
+					tmp = Test(Punch,selectors[i],i);
+					test.appendChild(tmp);
+					i++;
+				}
+			}
+		</script>
+	</head>
+	<body id="body">
+		<div id="root1">
+			<h1 id="h1">H1 Tag</h1>
+			<div id="div1" class="test1">
+				<img id="img1" class="test2" align="left"/>
+			</div>
+			<a href="base" id="anchor1" title="foo bar somethingJointed foo">Something</a>
+			<h2 id="h2">H2 tag</h2>
+			<form id="form1">
+				<input type="text" id="input1" disabled="true"/>
+				<input type="checkbox" id="input2" checked="true"/>
+				<div id="div2"></div>
+			</form>
+		</div>
+		<div id="empty"></div>
+		<span id="span1" title="foo's bar"></span>
+		<div id="root2">
+			<span id="台北Táiběi"></span>
+			<p id="root2-p1" class="台北Táiběi"></p>
+		</div>
+		<ol id="test">
+		</ol>
+	</body>
+</html>
+
