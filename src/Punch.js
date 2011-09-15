@@ -1,11 +1,6 @@
 (function(){
     'use strict';
-    /*
-        To do:
-        1. Start banging away at some cross browser bugs
-        2. Implement qSA
-        3. Add more descriptive and better comments
-    */
+    
     var reCombinators = RegExp('^(\\s*)([A-Za-z0-9\\*]*)(\\s*)(>\\s*|~\\s*|\\+\\s*|#[\\w\\u00c0-\\uFFFF\\-]*|\\[[\\w\\-\\:\\.\\|"\'\\*\\~\\^\\=\\$\\!\\s]*\\]{1}|:[\\w\\-]*\\({1}[^\\)]*\\){1}|:[\\w\\-]*|\\.[\\w\\u00c0-\\uFFFF\\-]*|){1}(.*)$'), 
         /*
             combinators:
@@ -103,7 +98,7 @@
             return results;
         }
         //Parse comma is slower than native-code "split", use it if there are no parens
-        selector = selector.indexOf(')') === -1 ? selector.split(',') : parseComma(selector);
+        selector = selector.indexOf(')') > -1 ? parseComma(selector) : selector.split(',');
       
         if(!isArray(context)) context = [context];
         //cycle through the simple selectors
@@ -380,6 +375,23 @@
                     };
                 }
             });
+        },
+        
+        'nth-last-child':function(value){
+            return nth(value,function(number,offset,n){
+                return function(element){
+                      var parentsChildren = getChildren(element.parentNode),
+                          length = parentsChildren.length,
+                          index = length,
+                          tmp;
+                      while(
+                          index-- && parentsChildren[index] !== element  
+                      );
+                      index = length - (index + 1);
+                      return n ? number === 0 ? (index - offset) === 0 ? true : false : (tmp = ((index - offset) / number), tmp >= 0 && (tmp % 1) === 0) : index === number;
+
+                }; 
+            });  
         },
         
         'nth':function(value){
