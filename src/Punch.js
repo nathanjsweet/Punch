@@ -1,7 +1,7 @@
 (function(){
     'use strict';
     
-    var reCombinators = RegExp('^(\\s*)([A-Za-z0-9\\*]*)(\\s*)(>\\s*|~\\s*|\\+\\s*|#[\\w\\u00c0-\\uFFFF\\-]*|\\[[\\w\\-\\:\\.\\|"\'\\*\\~\\^\\=\\$\\!\\s]*\\]{1}|:[\\w\\-]*\\({1}[^\\)]*\\){1}|:[\\w\\-]*|\\.[\\w\\u00c0-\\uFFFF\\-]*|){1}(.*)$'), 
+    var reCombinators = RegExp('^(\\s*)([A-Za-z0-9\\*]*)(\\s*)(>\\s*|~\\s*|\\+\\s*|#[\\w\\u00c0-\\uFFFF\\-]+|\\[[^\\]]*\\]{1}|:[\\w\\-]*\\({1}[^\\)]*\\){1}|:[\\w\\-]*|\\.[\\w\\u00c0-\\uFFFF\\-]*|){1}(.*)$'), 
         /*
             combinators:
             ^(\\s*) - grab white space preceding tagName, means it descends from.
@@ -11,15 +11,17 @@
                 >\\s*| - grab children selector, move forward OR
                 ~\\s*| - grab general next sibling selector, move forward OR
                 \\+\\s*| - grab immediate next sibling selector, move forward OR
-                #[\\w\\\\u00c0-\\uFFFF\\-]*| - grab id selector, move forward OR
-                \\[[\\w\\-\\:\\.\\|"\\*\\~\\^\\=\\$\\!\\s]*\\]{1}| - grab attribute selector, move forward OR
+                #[\\w\\\\u00c0-\\uFFFF\\-]+| - grab id selector, move forward OR
+                \\[[\\w\\-\\:\\.\\|"\\*\\~\\^\\=\\$\\!\\s\\u00c0-\\uFFFF]*\\]{1}| - grab attribute selector, move forward OR
+                possibly: \\[[^\\]]*\\]{1}| - grab attribute selector, move forward OR
                 :[\\w\\-]*\\({1}[^\\)]*\\){1}| - grab pseudo-selector WITH parentheses, move forward OR 
-                :[\\w\\-]*| - - grab pseudo-selector WITHOUT parentheses, move forward OR
+                :[\\w\\-]*| - grab pseudo-selector WITHOUT parentheses, move forward OR
                 \\.[\\w\\\\u00c0-\\uFFFF\\-]*| - grab class-selector and relevant values, morve forward OR
                  - grab nospace to delimit remainder
             ){1}
             (.*)$ - grab remainder for later parsing
         */
+       
         reAttrCombinator = RegExp('^(?:\\[){1}([\\w\\.\\:]*)(\\||\\!|\\~|\\^|\\*|\\$|\\=|){1}(?:\\=)?("|\')?([^\\]]*)'),
         /*
             reAttrCombinator:
@@ -109,7 +111,6 @@
         } catch(e){
             ERROR();
         }
-        
         /*There is a possible optimization here; if there was never a comma in the master selector
         then it is possible that this may not to get sorted, look into it. IE if selector length is
         exactly equal to 1.
