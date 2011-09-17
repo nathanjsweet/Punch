@@ -12,8 +12,7 @@
                 ~\\s*| - grab general next sibling selector, move forward OR
                 \\+\\s*| - grab immediate next sibling selector, move forward OR
                 #[\\w\\\\u00c0-\\uFFFF\\-]+| - grab id selector, move forward OR
-                \\[[\\w\\-\\:\\.\\|"\\*\\~\\^\\=\\$\\!\\s\\u00c0-\\uFFFF]*\\]{1}| - grab attribute selector, move forward OR
-                possibly: \\[[^\\]]*\\]{1}| - grab attribute selector, move forward OR
+                \\[[^\\]]*\\]{1}| - grab attribute selector, move forward OR
                 :[\\w\\-]*\\({1}[^\\)]*\\){1}| - grab pseudo-selector WITH parentheses, move forward OR 
                 :[\\w\\-]*| - grab pseudo-selector WITHOUT parentheses, move forward OR
                 \\.[\\w\\\\u00c0-\\uFFFF\\-]*| - grab class-selector and relevant values, morve forward OR
@@ -70,21 +69,29 @@
         reWhite = new RegExp('^\\s+|\\s+$','g'),
         reHasWhite = RegExp('\\s'),
  
-        removeWhite = function(string){
-            //notice reWhite, just two lines above, this removes whitespace from the ends of strings.
-            return string.replace(reWhite,'');
-        },
+        removeWhite = String.prototype.trim ?
+            function(string){
+                return string.trim();
+            }
+            :
+            function(string){
+                //notice reWhite, just two lines above, this removes whitespace from the ends of strings.
+                return string.replace(reWhite,'');
+            },
         //some utilities
         slice = Array.prototype.slice,
         
-        isArray = function(obj){
-            return Object.prototype.toString.call(obj) === '[object Array]';  
-        },
+        isArray = Array.isArray ?
+            Array.isArray 
+            : 
+            function(obj){
+                return Object.prototype.toString.call(obj) === '[object Array]';  
+            },
         //cache last selector to help error reporting;
         lastSelector,
         
     ERROR = function(){
-        throw lastSelector + ' - is invalid sytax.';
+        throw lastSelector + (e ? e : ' - is invalid sytax.');
     },
    
     Punch = function(selector,context){
@@ -109,7 +116,7 @@
                 results = results.concat(select(selector[i],context));
             }
         } catch(e){
-            ERROR();
+            ERROR(e);
         }
         /*There is a possible optimization here; if there was never a comma in the master selector
         then it is possible that this may not to get sorted, look into it. IE if selector length is
@@ -153,7 +160,7 @@
               i,n,tag,space,combinator,array;
           do{
                 count++;
-                if(count > 100) ERROR();
+                if(count > 100) throw ' - created an indefinite loop.';
                 array = reCombinators.exec(remainder);
                 lastSelector = array[0];
                 tag = array[2];
@@ -206,7 +213,7 @@
                 method,attr;
                 
             if(quote || reHasWhite.test(value)){
-                if(!quote || quote !== value.slice(-1)) ERROR();
+                if(!quote || quote !== value.slice(-1)) throw ' - invalid attribute syntax';
                 value = value.slice(0,-1);
             }
             method = attrOperators[operator](value);
@@ -388,7 +395,7 @@
                       while(
                           index-- && parentsChildren[index] !== element  
                       );
-                      index = length - (index + 1);
+                      index = length - index;
                       return n ? number === 0 ? (index - offset) === 0 ? true : false : (tmp = ((index - offset) / number), tmp >= 0 && (tmp % 1) === 0) : index === number;
 
                 }; 
