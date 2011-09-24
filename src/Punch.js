@@ -1,73 +1,75 @@
 (function(){
     'use strict';
-    
-    var reCombinators = RegExp('^(\\s*)([A-Za-z0-9\\*]*)(\\s*)(>\\s*|~\\s*|\\+\\s*|#[\\w\\u00c0-\\uFFFF\\-]+|\\[[^\\]]*\\]{1}|:[\\w\\-]*\\({1}[^\\)]*\\){1}|:[\\w\\-]*|\\.[\\w\\u00c0-\\uFFFF\\-]*|){1}(.*)$'), 
+    /* To Do:
+        1. refactor regexps into literals
+    */
+    var reCombinators = /^(\s*)([A-Za-z0-9\*]*)(\s*)(>\s*|~\s*|\+\s*|#[\w\u00c0-\uFFFF\-]+|\[[^\]]*\]{1}|:[\w\-]*\({1}[^\)]*\){1}|:[\w\-]*|\.[\w\u00c0-\uFFFF\-]*|){1}(.*)$/, 
         /*
             combinators:
-            ^(\\s*) - grab white space preceding tagName, means it descends from.
-            ([A-Za-z0-9\\*]*) - grab tag name
-            (\\s*) - grab white space proceding tagName, all the tagNames have descendent selectors.
+            ^(\s*) - grab white space preceding tagName, means it descends from.
+            ([A-Za-z0-9\*]*) - grab tag name
+            (\s*) - grab white space proceding tagName, all the tagNames have descendent selectors.
             (
-                >\\s*| - grab children selector, move forward OR
-                ~\\s*| - grab general next sibling selector, move forward OR
-                \\+\\s*| - grab immediate next sibling selector, move forward OR
-                #[\\w\\\\u00c0-\\uFFFF\\-]+| - grab id selector, move forward OR
-                \\[[^\\]]*\\]{1}| - grab attribute selector, move forward OR
-                :[\\w\\-]*\\({1}[^\\)]*\\){1}| - grab pseudo-selector WITH parentheses, move forward OR 
-                :[\\w\\-]*| - grab pseudo-selector WITHOUT parentheses, move forward OR
-                \\.[\\w\\\\u00c0-\\uFFFF\\-]*| - grab class-selector and relevant values, morve forward OR
+                >\s*| - grab children selector, move forward OR
+                ~\s*| - grab general next sibling selector, move forward OR
+                \+\s*| - grab immediate next sibling selector, move forward OR
+                #[\w\\u00c0-\uFFFF\-]+| - grab id selector, move forward OR
+                \[[^\]]*\]{1}| - grab attribute selector, move forward OR
+                :[\w\-]*\({1}[^\)]*\){1}| - grab pseudo-selector WITH parentheses, move forward OR 
+                :[\w\-]*| - grab pseudo-selector WITHOUT parentheses, move forward OR
+                \.[\w\\u00c0-\uFFFF\-]*| - grab class-selector and relevant values, morve forward OR
                  - grab nospace to delimit remainder
             ){1}
             (.*)$ - grab remainder for later parsing
         */
        
-        reAttrCombinator = RegExp('^(?:\\[){1}([\\w\\.\\:]*)(\\||\\!|\\~|\\^|\\*|\\$|\\=|){1}(?:\\=)?("|\')?([^\\]]*)'),
+        reAttrCombinator = /^(?:\[){1}([\w\.\:]*)(\||\!|\~|\^|\*|\$|\=|){1}(?:\=)?("|\')?([^\]]*)/,
         /*
             reAttrCombinator:
-            ^(?:\\[){1} - dispose of brace
-            ([\\w\\.\\:]*) - grab attribute name
+            ^(?:\[){1} - dispose of brace
+            ([\w\.\:]*) - grab attribute name
             (
-                \\|| - grab "|" combinator OR
-                \\!| - grab "!" combinator OR
-                \\~| - grab "~" combinator OR
-                \\^| - grab "^" combinator OR
-                \\*| - grab "*" combinator OR
-                \\$| - grab "$" combinator OR
-                \\=| - grab "=" combinator OR nothing
+                \|| - grab "|" combinator OR
+                \!| - grab "!" combinator OR
+                \~| - grab "~" combinator OR
+                \^| - grab "^" combinator OR
+                \*| - grab "*" combinator OR
+                \$| - grab "$" combinator OR
+                \=| - grab "=" combinator OR nothing
             ){1}
-            (?:\\=)? - dispose of remaining equal sign, if present
-            (\\"|\')? - grab the beginning quote, if present
-            ([^\\]]*) - grab the value of the expression.
+            (?:\=)? - dispose of remaining equal sign, if present
+            (\"|\')? - grab the beginning quote, if present
+            ([^\]]*) - grab the value of the expression.
         */
-        reIdCombinator = RegExp('(?:#){1}([^\\s]*)'),
-        reChildCombinator = RegExp('(?:[>\\s]*)(.*)'),
-        rePlusCombinator = RegExp('(?:[\\+\\s]*)(.*)'),
-        reTildeCombinator = RegExp('(?:[~\\s]*)(.*)'),
-        reClassCombinator = RegExp('(?:[\\.]{1})(.*)'),
-        reColonCombinator = RegExp('^(?:\\:){1}([^\\(]*)(?:\\(?)([^\\)]*)'),
+        reIdCombinator = /(?:#){1}([^\s]*)/,
+        reChildCombinator = /(?:[>\s]*)(.*)/,
+        rePlusCombinator = /(?:[\+\s]*)(.*)/,
+        reTildeCombinator = /(?:[~\s]*)(.*)/,
+        reClassCombinator = /(?:[\.]{1})(.*)/,
+        reColonCombinator = /^(?:\:){1}([^\(]*)(?:\(?)([^\)]*)/,
         /*
-            ^(?:\\:){1} - dispose of one, exactly one, occurence of the colon
-            ([^\\(]*) - grab all characters that aren't a right parenthesis
-            (?:\\(?) - dispose of the right parenthesis
-            ([^\\)]*) - grab all characters that aren't a left parenthesis
+            ^(?:\:){1} - dispose of one, exactly one, occurence of the colon
+            ([^\(]*) - grab all characters that aren't a right parenthesis
+            (?:\(?) - dispose of the right parenthesis
+            ([^\)]*) - grab all characters that aren't a left parenthesis
         */
-        reNthParser = RegExp('(?:\\s*)(\\-?)(odd|even|[\\d]*){1}(n?)(?:\\s*)([\\-+]?)(?:\\s*)([\\d]*)'),
+        reNthParser = /(?:\s*)(\-?)(odd|even|[\d]*){1}(n?)(?:\s*)([\-+]?)(?:\s*)([\d]*)/,
         /*
-            (?:\\s*) - dispose of all beginning white  space
-            (\\-?) - grab negative operator if present
-            (odd|even|\\-?[\\d]?){1} - grab one occurence of the word 'odd', or 'even', or an integer
+            (?:\s*) - dispose of all beginning white  space
+            (\-?) - grab negative operator if present
+            (odd|even|\-?[\d]?){1} - grab one occurence of the word 'odd', or 'even', or an integer
             (n?) - grab one or zero occurences of the letter 'n'
-            (?:\\s*) - dispose of white  space after integer or 'n'
-            (\\-|\\+)? - grab one or zero occurences of a minus or plus sign
-            (?:\\s*) - dispose of white space
-            ([\\d]*) - grab integer
+            (?:\s*) - dispose of white  space after integer or 'n'
+            (\-|\+)? - grab one or zero occurences of a minus or plus sign
+            (?:\s*) - dispose of white space
+            ([\d]*) - grab integer
         */
        //This small RegExp is for the "is" function, to see what very basic identifying selector is present
-        reIs = RegExp('^([\\.\\[#\\:]?)(.*)'),
-        reClass = new RegExp('[\\n\\t\\r]','g'),
-        reIsNum = RegExp('^\\s*\\-?\\d*\\s*$'),
-        reWhite = new RegExp('^\\s+|\\s+$','g'),
-        reHasWhite = RegExp('\\s'),
+        reIs = /^([\.\[#\:]?)(.*)/,
+        reClass = /[\n\t\r]/g,
+        reIsNum = /^\s*\-?\d*\s*$/,
+        reWhite = /^\s+|\s+$/g,
+        reHasWhite = /\s/,
  
         removeWhite = String.prototype.trim ?
             function(string){
