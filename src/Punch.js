@@ -1,7 +1,7 @@
 (function(){
     'use strict';
 
-    var reCombinators = /^(\s*)([A-Za-z0-9\*]*)(\s*)(>\s*|~\s*|\+\s*|#[\w\u00c0-\uFFFF\-]+|\[[^\]]*\]{1}|:[\w\-]*\({1}[^\)]*\){1}|:[\w\-]*|\.[\w\u00c0-\uFFFF\-]*|){1}(.*)$/, 
+    var reCombinators = /^(\s*)([A-Za-z0-9\*]*)(\s*)(>\s*|~\s*|\+\s*|#[\w\u00c0-\uFFFF\-]+|\[[^\]]+\]{1}|:[\w\-]+\({1}[^\)]+\){1}|:[\w\-]+|\.[\w\u00c0-\uFFFF\-]+|){1}(.*)$/, 
         /*
             combinators:
             ^(\s*) - grab white space preceding tagName, means it descends from.
@@ -12,10 +12,10 @@
                 ~\s*| - grab general next sibling selector, move forward OR
                 \+\s*| - grab immediate next sibling selector, move forward OR
                 #[\w\\u00c0-\uFFFF\-]+| - grab id selector, move forward OR
-                \[[^\]]*\]{1}| - grab attribute selector, move forward OR
-                :[\w\-]*\({1}[^\)]*\){1}| - grab pseudo-selector WITH parentheses, move forward OR 
-                :[\w\-]*| - grab pseudo-selector WITHOUT parentheses, move forward OR
-                \.[\w\\u00c0-\uFFFF\-]*| - grab class-selector and relevant values, morve forward OR
+                \[[^\]]+\]{1}| - grab attribute selector, move forward OR
+                :[\w\-]+\({1}[^\)]*\){1}| - grab pseudo-selector WITH parentheses, move forward OR 
+                :[\w\-]+| - grab pseudo-selector WITHOUT parentheses, move forward OR
+                \.[\w\\u00c0-\uFFFF\-]+| - grab class-selector and relevant values, morve forward OR
                  - grab nospace to delimit remainder
             ){1}
             (.*)$ - grab remainder for later parsing
