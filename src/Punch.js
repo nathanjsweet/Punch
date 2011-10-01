@@ -1,8 +1,6 @@
 (function(){
     'use strict';
-    /* To Do:
-        1. refactor regexps into literals
-    */
+
     var reCombinators = /^(\s*)([A-Za-z0-9\*]*)(\s*)(>\s*|~\s*|\+\s*|#[\w\u00c0-\uFFFF\-]+|\[[^\]]*\]{1}|:[\w\-]*\({1}[^\)]*\){1}|:[\w\-]*|\.[\w\u00c0-\uFFFF\-]*|){1}(.*)$/, 
         /*
             combinators:
