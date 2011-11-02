@@ -1,7 +1,7 @@
 (function(){
     'use strict';
 
-    var reCombinators = /^(\s*)([A-Za-z0-9\*]*)(\s*)(>\s*|~\s*|\+\s*|#[\w\u00c0-\uFFFF\-]+|\[[^\]]+\]{1}|:[\w\-]+\({1}[^\)]+\){1}|:[\w\-]+|\.[\w\u00c0-\uFFFF\-]+|){1}(.*)$/, 
+    var reCombinators = /^(\s*)([A-Za-z0-9\*]*)(\s*)(>\s*|~\s*|\+\s*|#[\w\u00a0-\uFFFF\-]+|\[[^\]]+\]{1}|:[\w\-]+\({1}[^\)]+\){1}|:[\w\-]+|\.[\w\u00a0-\uFFFF\-]+|)(.*)$/, 
         /*
             combinators:
             ^(\s*) - grab white space preceding tagName, means it descends from.
@@ -11,17 +11,17 @@
                 >\s*| - grab children selector, move forward OR
                 ~\s*| - grab general next sibling selector, move forward OR
                 \+\s*| - grab immediate next sibling selector, move forward OR
-                #[\w\\u00c0-\uFFFF\-]+| - grab id selector, move forward OR
+                #[\w\\u00a0-\uFFFF\-]+| - grab id selector, move forward OR
                 \[[^\]]+\]{1}| - grab attribute selector, move forward OR
                 :[\w\-]+\({1}[^\)]*\){1}| - grab pseudo-selector WITH parentheses, move forward OR 
                 :[\w\-]+| - grab pseudo-selector WITHOUT parentheses, move forward OR
-                \.[\w\\u00c0-\uFFFF\-]+| - grab class-selector and relevant values, morve forward OR
+                \.[\w\\u00a0-\uFFFF\-]+| - grab class-selector and relevant values, morve forward OR
                  - grab nospace to delimit remainder
-            ){1}
+            )
             (.*)$ - grab remainder for later parsing
         */
        
-        reAttrCombinator = /^(?:\[){1}([\w\.\:]*)(\||\!|\~|\^|\*|\$|\=|){1}(?:\=)?("|\')?([^\]]*)/,
+        reAttrCombinator = /^(?:\[){1}([\w\.\:]*)(\||\!|\~|\^|\*|\$|\=|)(?:\=)?("|\')?([^\]]*)/,
         /*
             reAttrCombinator:
             ^(?:\[){1} - dispose of brace
@@ -34,7 +34,7 @@
                 \*| - grab "*" combinator OR
                 \$| - grab "$" combinator OR
                 \=| - grab "=" combinator OR nothing
-            ){1}
+            )
             (?:\=)? - dispose of remaining equal sign, if present
             (\"|\')? - grab the beginning quote, if present
             ([^\]]*) - grab the value of the expression.
@@ -44,9 +44,9 @@
         rePlusCombinator = /(?:[\+\s]*)(.*)/,
         reTildeCombinator = /(?:[~\s]*)(.*)/,
         reClassCombinator = /(?:[\.]{1})(.*)/,
-        reColonCombinator = /^(?:\:){1}([^\(]*)(?:\(?)([^\)]*)/,
+        reColonCombinator = /^(?:\:{1})([^\(]*)(?:\(?)([^\)]*)/,
         /*
-            ^(?:\:){1} - dispose of one, exactly one, occurence of the colon
+            ^(?:\:{1}) - dispose of one, exactly one, occurence of the colon
             ([^\(]*) - grab all characters that aren't a right parenthesis
             (?:\(?) - dispose of the right parenthesis
             ([^\)]*) - grab all characters that aren't a left parenthesis
@@ -55,7 +55,7 @@
         /*
             (?:\s*) - dispose of all beginning white  space
             (\-?) - grab negative operator if present
-            (odd|even|\-?[\d]?){1} - grab one occurence of the word 'odd', or 'even', or an integer
+            (odd|even|\-?[\d]?)- grab one occurence of the word 'odd', or 'even', or an integer
             (n?) - grab one or zero occurences of the letter 'n'
             (?:\s*) - dispose of white  space after integer or 'n'
             (\-|\+)? - grab one or zero occurences of a minus or plus sign
@@ -89,10 +89,6 @@
             },
         //cache last selector to help error reporting;
         lastSelector,
-        
-    ERROR = function(){
-        throw lastSelector + (e ? e : ' - is invalid sytax.');
-    },
    
     Punch = function(selector,context){
         context = context || document;
@@ -116,7 +112,7 @@
                 results = results.concat(select(selector[i],context));
             }
         } catch(e){
-            ERROR(e);
+            throw e + lastSelector;
         }
         /*There is a possible optimization here; if there was never a comma in the master selector
         then it is possible that this may not to get sorted, look into it. IE if selector length is
@@ -160,7 +156,7 @@
               i,n,tag,space,combinator,array;
           do{
                 count++;
-                if(count > 100) throw ' - created an indefinite loop.';
+                if(count > 100) throw 'SYNTAX_ERR ';
                 array = reCombinators.exec(remainder);
                 lastSelector = array[0];
                 tag = array[2];
@@ -213,7 +209,7 @@
                 method,attr;
                 
             if(quote || reHasWhite.test(value)){
-                if(!quote || quote !== value.slice(-1)) throw ' - invalid attribute syntax';
+                if(!quote || quote !== value.slice(-1)) throw 'SYNTAX_ERR';
                 value = value.slice(0,-1);
             }
             method = attrOperators[operator](value);
